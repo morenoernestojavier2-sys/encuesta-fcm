@@ -7,41 +7,51 @@ import io
 # --- CONFIGURACIÓN Y DISEÑO ---
 st.set_page_config(page_title="Encuesta FCM", page_icon="🏥", layout="centered")
 
-# --- CSS BLINDADO PARA LECTURA PERFECTA ---
+# --- CSS BLINDADO + FONDO LINDO RECUPERADO ---
 st.markdown("""
 <style>
-    /* 1. FONDO DE PANTALLA (solo se verá en los bordes) */
+    /* 1. RECUPERAMOS EL FONDO LINDO Y QUE SE VEA BIEN */
     .stApp {
-        background-image: url("https://img.freepik.com/free-vector/cartoon-coronavirus-vaccine-background_23-2148861308.jpg");
-        background-size: cover;
-        background-repeat: no-repeat;
-        background-attachment: fixed;
+        background-image: url("https://img.freepik.com/free-vector/cartoon-coronavirus-vaccine-background_23-2148861308.jpg") !important;
+        background-size: cover !important;
+        background-repeat: no-repeat !important;
+        background-attachment: fixed !important;
     }
     
-    /* 2. CAJA PRINCIPAL SÓLIDA (SIN TRANSPARENCIA) */
+    /* 2. CAJA PRINCIPAL SÓLIDA PARA LECTURA (SÍ, ES BLANCA Y SÓLIDA, PERO CON AJUSTES PARA CELULAR) */
     .block-container {
-        background-color: #FFFFFF !important; /* Blanco puro SÓLIDO */
-        opacity: 1.0 !important; /* 100% Sólido - Nada de transparencia */
-        padding: 40px;
+        background-color: #FFFFFF !important; /* Blanco puro SÓLIDO - No negociable para lectura */
+        opacity: 1.0 !important; /* 100% Sólido - Nada de transparencia detrás de las letras */
         border-radius: 15px;
-        box-shadow: 0px 8px 30px rgba(0,0,0,0.6); /* Sombra más fuerte para que resalte */
-        color: #000000; /* Texto negro base */
+        box-shadow: 0px 8px 30px rgba(0,0,0,0.8); /* Sombra MUCHO más fuerte para que resalte contra el fondo de colores */
+        color: #000000 !important; /* Texto negro base - Siempre */
+        margin-top: 20px;
+        margin-bottom: 20px;
     }
-    
+
+    /* AJUSTES ESPECÍFICOS PARA CELULARES (Hacemos el formulario más angosto para que el fondo se vea a los costados) */
+    @media only screen and (max-width: 600px) {
+        .block-container {
+            max-width: 85% !important; /* El formulario solo ocupa el 85% del ancho del celular */
+            padding: 20px !important; /* Menos relleno interno para ganar espacio */
+            margin: 20px auto !important; /* Margen para centrarlo y dejar ver el fondo arriba y abajo */
+        }
+    }
+
     /* 3. RESALTAR PREGUNTAS (Títulos) */
-    .stTextInput label, .stSelectbox label, .stRadio label, .stMultiselect label, h2, h3 {
-        color: #000000 !important; /* Negro Puro */
+    .stTextInput label, .stSelectbox label, .stRadio label, .stMultiselect label, .stSlider label, h2, h3, h1 {
+        color: #000000 !important; /* Negro Puro - Siempre */
         font-weight: 700 !important; /* Más gruesa (Negrita) */
         font-size: 16px !important;
         margin-bottom: 8px !important;
     }
     
-    /* 4. RESALTAR MUCHO LOS RECUADROS DE RESPUESTAS (Inputs) */
+    /* 4. RESALTAR MUCHO LOS RECUADROS DE RESPUESTAS (Inputs) - Evitamos Modo Oscuro */
     .stTextInput input, .stSelectbox div[role="button"], .stRadio div[role="radiogroup"], .stMultiselect div[role="listbox"], .stSlider div[role="slider"] {
         background-color: #F8F9FA !important; /* Fondo gris súper claro pero SÓLIDO */
-        border: 2px solid #6C757D !important; /* Borde MUCHO más grueso y oscuro */
+        border: 2px solid #000000 !important; /* Borde NEGRO puro y grueso */
         border-radius: 8px !important;
-        color: #000000 !important; /* Texto que escribe el alumno en negro */
+        color: #000000 !important; /* Texto que escribe el alumno en negro - Siempre */
         opacity: 1.0 !important;
     }
     
@@ -53,64 +63,69 @@ st.markdown("""
 
     /* 5. BOTONES GRANDES Y RESALTADOS */
     div.stButton > button:first-child, div.stDownloadButton > button:first-child {
-        background-color: #0056b3;
-        color: #ffffff;
-        border-radius: 8px;
-        border: none;
-        box-shadow: 0px 5px 0px #003d82;
-        padding: 12px 24px;
-        font-weight: bold;
-        font-size: 18px;
-        transition: all 0.1s;
-        width: 100%;
-        margin-top: 20px;
+        background-color: #0056b3 !important;
+        color: #ffffff !important;
+        border-radius: 8px !important;
+        border: none !important;
+        box-shadow: 0px 5px 0px #003d82 !important;
+        padding: 12px 24px !important;
+        font-weight: bold !important;
+        font-size: 18px !important;
+        transition: all 0.1s !important;
+        width: 100% !important;
+        margin-top: 20px !important;
     }
     div.stButton > button:first-child:active, div.stDownloadButton > button:first-child:active {
-        transform: translateY(5px);
-        box-shadow: 0px 0px 0px #003d82;
+        transform: translateY(5px) !important;
+        box-shadow: 0px 0px 0px #003d82 !important;
     }
     
     /* 6. CARNETS SÓLIDOS AL FINAL */
     .carnet-oficial {
-        background-color: #FFFFFF !important; /* Blanco Puro SÓLIDO para el carnet */
-        border-radius: 12px;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-        border: 2px solid #ddd;
-        overflow: hidden;
-        margin-bottom: 25px;
-        font-family: 'Arial', sans-serif;
+        background-color: #FFFFFF !important; /* Blanco Puro SÓLIDO */
+        border-radius: 12px !important;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.2) !important;
+        border: 2px solid #000000 !important; /* Borde Negro */
+        overflow: hidden !important;
+        margin-bottom: 25px !important;
+        font-family: 'Arial', sans-serif !important;
         opacity: 1.0 !important;
     }
     .carnet-header-verde {
-        background-color: #2e7d32;
-        color: white;
-        padding: 15px;
-        text-align: center;
-        border-bottom: 4px solid #1b5e20;
+        background-color: #2e7d32 !important;
+        color: white !important;
+        padding: 15px !important;
+        text-align: center !important;
+        border-bottom: 4px solid #1b5e20 !important;
     }
     .carnet-header-rojo {
-        background-color: #d32f2f;
-        color: white;
-        padding: 15px;
-        text-align: center;
-        border-bottom: 4px solid #b71c1c;
+        background-color: #d32f2f !important;
+        color: white !important;
+        padding: 15px !important;
+        text-align: center !important;
+        border-bottom: 4px solid #b71c1c !important;
     }
     .carnet-body {
-        padding: 20px;
-        color: #000000; /* Texto negro en el carnet */
+        padding: 20px !important;
+        color: #000000 !important; /* Texto negro en el carnet - Siempre */
     }
     .fila-dato {
-        border-bottom: 1px dashed #666;
-        padding: 8px 0;
-        font-size: 15px;
+        border-bottom: 1px dashed #000000 !important; /* Línea de puntos negra */
+        padding: 8px 0 !important;
+        font-size: 15px !important;
     }
     .carnet-footer {
-        background-color: #F8F9FA;
-        padding: 10px;
-        text-align: center;
-        font-size: 12px;
-        color: #444;
-        border-top: 1px solid #ddd;
+        background-color: #F8F9FA !important;
+        padding: 10px !important;
+        text-align: center !important;
+        font-size: 12px !important;
+        color: #444 !important;
+        border-top: 1px solid #ddd !important;
+    }
+    
+    /* Forzar color de texto negro para el agradecimiento final si no está en carnet */
+    .stMarkdown div p {
+        color: #000000;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -292,7 +307,7 @@ else:
         st.write("¿Qué tan necesarias consideras las vacunas? En una escala donde 0 es 'Innecesario' a 10 'Muy necesario' *")
         necesarias = st.select_slider("", options=list(range(11)), value=5)
         
-        prev = st.radio("¿Consideras la aplicación de vacunas como método preventivo de aplicación de enfermedades? *", ["Si", "No"])
+        prev = st.radio("¿Consideras la aplicación de vacunas como método preventivo de complicación de enfermedades? *", ["Si", "No"])
         
         st.write("¿Qué tanto confías en la seguridad y eficacia de las vacunas? En una escala donde 1 es 'Ninguna confianza' a 5 es 'Total confianza' *")
         confianza = st.select_slider(" ", options=[1,2,3,4,5], value=3)
