@@ -7,7 +7,7 @@ import io
 # --- CONFIGURACIÓN Y DISEÑO ---
 st.set_page_config(page_title="Encuesta FCM", page_icon="🏥", layout="centered")
 
-# --- CSS BLINDADO + FONDO LINDO RECUPERADO ---
+# --- CSS BLINDADO + FONDO LINDO RECUPERADO + RESALTADO MÁXIMO ---
 st.markdown("""
 <style>
     /* 1. RECUPERAMOS EL FONDO LINDO Y QUE SE VEA BIEN */
@@ -18,41 +18,32 @@ st.markdown("""
         background-attachment: fixed !important;
     }
     
-    /* 2. CAJA PRINCIPAL SÓLIDA PARA LECTURA (SÍ, ES BLANCA Y SÓLIDA, PERO CON AJUSTES PARA CELULAR) */
+    /* 2. CAJA DE LECTURA SEMI-TRANSPARENTE (Como al principio) + SOMBRA FUERTE */
     .block-container {
-        background-color: #FFFFFF !important; /* Blanco puro SÓLIDO - No negociable para lectura */
-        opacity: 1.0 !important; /* 100% Sólido - Nada de transparencia detrás de las letras */
+        background-color: rgba(255, 255, 255, 0.90) !important; /* Semi-transparente para ver el fondo */
         border-radius: 15px;
-        box-shadow: 0px 8px 30px rgba(0,0,0,0.8); /* Sombra MUCHO más fuerte para que resalte contra el fondo de colores */
-        color: #000000 !important; /* Texto negro base - Siempre */
+        box-shadow: 0px 8px 30px rgba(0,0,0,0.9); /* Sombra MUCHO más fuerte para que resalte contra el fondo de colores */
+        color: #000000 !important; /* Texto negro base */
         margin-top: 20px;
         margin-bottom: 20px;
+        padding: 40px;
     }
 
-    /* AJUSTES ESPECÍFICOS PARA CELULARES (Hacemos el formulario más angosto para que el fondo se vea a los costados) */
-    @media only screen and (max-width: 600px) {
-        .block-container {
-            max-width: 85% !important; /* El formulario solo ocupa el 85% del ancho del celular */
-            padding: 20px !important; /* Menos relleno interno para ganar espacio */
-            margin: 20px auto !important; /* Margen para centrarlo y dejar ver el fondo arriba y abajo */
-        }
-    }
-
-    /* 3. RESALTAR PREGUNTAS (Títulos) */
-    .stTextInput label, .stSelectbox label, .stRadio label, .stMultiselect label, .stSlider label, h2, h3, h1 {
-        color: #000000 !important; /* Negro Puro - Siempre */
-        font-weight: 700 !important; /* Más gruesa (Negrita) */
-        font-size: 16px !important;
-        margin-bottom: 8px !important;
+    /* 3. RESALTAR TODAS LAS LETRAS (Negro Puro, Negrita y Sombra Blanca) */
+    .stTextInput label, .stSelectbox label, .stRadio label, .stMultiselect label, .stSlider label, h1, h2, h3, h4, h5, h6, .carnet-body, .stMetric label {
+        color: #000000 !important; /* Negro Puro */
+        font-weight: 700 !important; /* Negrita Gruesa */
+        text-shadow: 1px 1px 2px #FFFFFF !important; /* Sombra blanca sutil para "despegar" del fondo */
     }
     
-    /* 4. RESALTAR MUCHO LOS RECUADROS DE RESPUESTAS (Inputs) - Evitamos Modo Oscuro */
+    /* 4. RESALTAR MUCHO LOS RECUADROS DE RESPUESTAS (Bordes Negros, Gruesos, Sombras Grandes) */
     .stTextInput input, .stSelectbox div[role="button"], .stRadio div[role="radiogroup"], .stMultiselect div[role="listbox"], .stSlider div[role="slider"] {
-        background-color: #F8F9FA !important; /* Fondo gris súper claro pero SÓLIDO */
-        border: 2px solid #000000 !important; /* Borde NEGRO puro y grueso */
+        border: 3px solid #000000 !important; /* Borde NEGRO puro y MUY grueso */
         border-radius: 8px !important;
-        color: #000000 !important; /* Texto que escribe el alumno en negro - Siempre */
+        background-color: #FFFFFF !important; /* Fondo blanco sólido ADENTRO para lectura impecable */
+        color: #000000 !important; /* Texto que escribe el alumno en negro */
         opacity: 1.0 !important;
+        box-shadow: 4px 4px 10px rgba(0,0,0,0.8) !important; /* Sombra prominente para que "salten" */
     }
     
     /* Efecto al hacer clic en un recuadro */
@@ -61,13 +52,13 @@ st.markdown("""
         box-shadow: 0 0 0 0.2rem rgba(0,86,179,.25) !important;
     }
 
-    /* 5. BOTONES GRANDES Y RESALTADOS */
+    /* 5. BOTONES GRANDES Y RESALTADOS CON BORDES Y SOMBRAS */
     div.stButton > button:first-child, div.stDownloadButton > button:first-child {
         background-color: #0056b3 !important;
         color: #ffffff !important;
         border-radius: 8px !important;
-        border: none !important;
-        box-shadow: 0px 5px 0px #003d82 !important;
+        border: 3px solid #000000 !important; /* Borde Negro Grueso */
+        box-shadow: 5px 5px 15px rgba(0,0,0,0.8) !important; /* Sombra prominente */
         padding: 12px 24px !important;
         font-weight: bold !important;
         font-size: 18px !important;
@@ -80,12 +71,12 @@ st.markdown("""
         box-shadow: 0px 0px 0px #003d82 !important;
     }
     
-    /* 6. CARNETS SÓLIDOS AL FINAL */
+    /* 6. CARNETS SÓLIDOS AL FINAL CON BORDES RESALTADOS */
     .carnet-oficial {
         background-color: #FFFFFF !important; /* Blanco Puro SÓLIDO */
         border-radius: 12px !important;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.2) !important;
-        border: 2px solid #000000 !important; /* Borde Negro */
+        box-shadow: 0 8px 16px rgba(0,0,0,0.3) !important;
+        border: 4px solid #000000 !important; /* Borde Negro MUY Grueso */
         overflow: hidden !important;
         margin-bottom: 25px !important;
         font-family: 'Arial', sans-serif !important;
@@ -107,11 +98,11 @@ st.markdown("""
     }
     .carnet-body {
         padding: 20px !important;
-        color: #000000 !important; /* Texto negro en el carnet - Siempre */
+        color: #000000 !important; /* Texto negro base en carnet */
     }
     .fila-dato {
-        border-bottom: 1px dashed #000000 !important; /* Línea de puntos negra */
-        padding: 8px 0 !important;
+        border-bottom: 2px solid #000000 !important; /* Línea de puntos negra */
+        padding: 10px 0 !important;
         font-size: 15px !important;
     }
     .carnet-footer {
@@ -126,6 +117,8 @@ st.markdown("""
     /* Forzar color de texto negro para el agradecimiento final si no está en carnet */
     .stMarkdown div p {
         color: #000000;
+        font-weight: 700;
+        text-shadow: 1px 1px 2px #FFFFFF;
     }
 </style>
 """, unsafe_allow_html=True)
