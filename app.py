@@ -153,6 +153,27 @@ if st.session_state.modo_admin:
     st.button("⬅️ Volver a la Encuesta", on_click=cerrar_sesion)
     st.write("---")
     
+    # 🛠️ NUEVA HERRAMIENTA DE DIAGNÓSTICO
+    st.write("### 🛠️ Herramienta de Diagnóstico de Conexión")
+    if URL_DE_TU_GOOGLE_SCRIPT == "PEGA_ACA_TU_LINK_DE_GOOGLE":
+        st.error("⚠️ Todavía no pegaste el link de Google en la línea 8 del código.")
+    elif not URL_DE_TU_GOOGLE_SCRIPT.endswith("/exec"):
+        st.warning("⚠️ Ojo: Tu link de Google no termina en '/exec'. Por lo general, los links correctos terminan con esa palabra. Revisá si lo copiaste entero.")
+        
+    if st.button("🔌 Enviar Prueba al Excel"):
+        st.info("Intentando enviar un dato de prueba...")
+        try:
+            payload_prueba = {"tipo": "respuesta", "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Nombre": "PRUEBA CONEXION"}
+            resp = requests.post(URL_DE_TU_GOOGLE_SCRIPT, json=payload_prueba)
+            if resp.status_code == 200:
+                st.success(f"¡ÉXITO! La señal llegó a Google. (Respuesta: {resp.text})")
+                st.write("Fijate ahora mismo en tu Excel si apareció un nombre que dice 'PRUEBA CONEXION'.")
+            else:
+                st.error(f"ERROR DE GOOGLE: El servidor rebotó el paquete. (Código: {resp.status_code})")
+        except Exception as e:
+            st.error(f"ERROR TÉCNICO: La página no pudo salir a internet para mandar el dato. Detalle: {e}")
+    st.write("---")
+    
     try:
         res_respuestas = requests.get(f"{URL_DE_TU_GOOGLE_SCRIPT}?sheet=Respuestas").json()
         df = pd.DataFrame(res_respuestas)
@@ -192,15 +213,15 @@ else:
 
     if st.session_state.seccion == 1:
         st.header("SECCIÓN 1 - DATOS GENERALES")
-        n = st.text_input("Nombre y Apellido *")
-        e = st.text_input("Correo Electrónico *")
+        n = st.text_input("Nombre y Apellido *").upper()
+        e = st.text_input("Correo Electrónico *").upper()
         edad = st.selectbox("Edad *", ["18 a 25 años", "26 a 35 años", "36 a 45 años", "46 a 55 años", "56 a 65 años"])
         sexo = st.radio("Sexo *", ["Femenino", "Masculino"])
         
         nac = st.selectbox("Nacionalidad *", ["Argentina", "Colombia", "Venezuela", "Chile", "Perú", "Bolivia", "Ecuador", "Brasil", "Uruguay", "Paraguay", "Otros:"])
         nac_final = nac
         if nac == "Otros:":
-            nac_final = st.text_input("Especificá tu nacionalidad *")
+            nac_final = st.text_input("Especificá tu nacionalidad *").upper()
             
         carrera = st.selectbox("Carrera *", ["Medicina", "Enfermería", "Fonoaudiología", "Kinesiología y fisiatría", "Nutrición", "Obstetricia", "Bioimágenes", "Podología", "Anestesia", "Cosmetología", "Hemoterapia", "Instrumentación quirúrgica", "Prácticas cardiológicas", "Radiología", "Docente", "No docente", "Visitante", "Odontología", "Posgrado"])
         anio = st.selectbox("Año que cursa *", ["1er año", "2do año", "3er año", "4to año", "5to año", "6to año", "Docente", "No docente", "Visitante", "Posgrado"])
@@ -224,7 +245,7 @@ else:
         ])
         medios_final = medios.copy()
         if "Otros:" in medios:
-            otro_medio = st.text_input("Especificá por qué otro medio:")
+            otro_medio = st.text_input("Especificá por qué otro medio:").upper()
             if otro_medio:
                 medios_final.remove("Otros:")
                 medios_final.append(otro_medio)
@@ -236,7 +257,7 @@ else:
         lugares = st.multiselect("¿En qué lugares te vacunas habitualmente? (Seleccione las opciones correctas) *", ["Hospitales Públicos", "Hospitales Privados", "Cesac", "Otros:"])
         lugares_final = lugares.copy()
         if "Otros:" in lugares:
-            otro_lugar = st.text_input("Especificá qué otro lugar:")
+            otro_lugar = st.text_input("Especificá qué otro lugar:").upper()
             if otro_lugar:
                 lugares_final.remove("Otros:")
                 lugares_final.append(otro_lugar)
@@ -244,7 +265,7 @@ else:
         pago = st.radio("¿Tuviste que pagar alguna vacuna? *", ["Si", "No", "Otros:"])
         pago_final = pago
         if pago == "Otros:":
-            pago_final = st.text_input("Especificá qué vacuna o situación:")
+            pago_final = st.text_input("Especificá qué vacuna o situación:").upper()
 
         st.write("---")
         col1, col2 = st.columns(2)
@@ -374,9 +395,11 @@ else:
             payload_resp = {"tipo": "respuesta", "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
             payload_resp.update(st.session_state.respuestas)
             try:
-                requests.post(URL_DE_TU_GOOGLE_SCRIPT, json=payload_resp)
-            except:
-                pass
+                res = requests.post(URL_DE_TU_GOOGLE_SCRIPT, json=payload_resp)
+                if res.status_code != 200:
+                    st.error(f"⚠️ Atención: Falló el guardado en Excel. (Código: {res.status_code})")
+            except Exception as e:
+                st.error(f"⚠️ Atención: Error técnico impidió guardar los datos. ({e})")
             st.session_state.respuesta_guardada = True
 
         lista_marcadas = st.session_state.respuestas.get("Vacunas", "")
