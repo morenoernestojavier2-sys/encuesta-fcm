@@ -1,8 +1,7 @@
 import streamlit as st
 import pandas as pd
-import os
 from datetime import datetime
-import plotly.express as px
+import os
 import io
 
 # --- CONFIGURACIÓN Y DISEÑO ---
@@ -10,7 +9,6 @@ st.set_page_config(page_title="Encuesta FCM", page_icon="🏥", layout="centered
 
 st.markdown("""
 <style>
-    /* Aplicamos el fondo a toda la aplicación */
     .stApp {
         background-image: url("https://img.freepik.com/free-vector/cartoon-coronavirus-vaccine-background_23-2148861308.jpg");
         background-size: cover;
@@ -18,15 +16,15 @@ st.markdown("""
         background-attachment: fixed;
     }
     
-    /* Recuadro principal blanco semitransparente para que se lean las preguntas */
+    /* MAGIA DE ILUMINACIÓN: Se adapta al Modo Claro/Oscuro del celular automáticamente */
     .block-container {
-        background-color: rgba(255, 255, 255, 0.95);
+        background-color: var(--background-color);
         padding: 30px;
         border-radius: 15px;
-        box-shadow: 0px 4px 20px rgba(0,0,0,0.1);
+        box-shadow: 0px 4px 20px rgba(0,0,0,0.4);
+        opacity: 0.96;
     }
-
-    /* Estilo 3D para botones */
+    
     div.stButton > button:first-child, div.stDownloadButton > button:first-child {
         background-color: #0056b3;
         color: #ffffff;
@@ -43,12 +41,12 @@ st.markdown("""
         box-shadow: 0px 0px 0px #003d82;
     }
     
-    /* --- DISEÑO DE LOS CARNETS REALES --- */
+    /* Colores automáticos para el Carnet */
     .carnet-oficial {
-        background: #ffffff;
+        background-color: var(--secondary-background-color);
         border-radius: 12px;
         box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-        border: 1px solid #ddd;
+        border: 1px solid var(--faded-text-color);
         overflow: hidden;
         margin-bottom: 25px;
         font-family: 'Arial', sans-serif;
@@ -69,320 +67,322 @@ st.markdown("""
     }
     .carnet-body {
         padding: 20px;
-        color: #333;
+        color: var(--text-color);
     }
     .fila-dato {
-        border-bottom: 1px dashed #ccc;
+        border-bottom: 1px dashed var(--faded-text-color);
         padding: 8px 0;
         font-size: 15px;
     }
-    .lista-vacunas {
-        font-size: 16px;
-        line-height: 1.6;
-        margin-top: 10px;
-    }
     .carnet-footer {
-        background-color: #f1f1f1;
+        background-color: var(--background-color);
         padding: 10px;
         text-align: center;
         font-size: 12px;
-        color: #666;
-        border-top: 1px solid #ddd;
+        color: var(--faded-text-color);
+        border-top: 1px solid var(--faded-text-color);
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- FUNCIÓN AUXILIAR PARA REGISTRAR MOVIMIENTOS ---
+# --- FUNCIONES DE GUARDADO LOCAL ---
+def guardar_respuesta_local(datos):
+    archivo = 'Base_Respuestas.csv'
+    df_nuevo = pd.DataFrame([datos])
+    if not os.path.isfile(archivo):
+        df_nuevo.to_csv(archivo, index=False)
+    else:
+        df_nuevo.to_csv(archivo, mode='a', header=False, index=False)
+
 def registrar_movimiento(seccion_origen, accion_realizada):
-    registro = {
+    archivo = 'Historial_Movimientos.csv'
+    datos = {
         "Fecha_Hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "Seccion_Origen": seccion_origen,
         "Accion": accion_realizada
     }
-    df_mov = pd.DataFrame([registro])
-    if not os.path.isfile("Historial_Movimientos.csv"):
-        df_mov.to_csv("Historial_Movimientos.csv", index=False)
+    df_nuevo = pd.DataFrame([datos])
+    if not os.path.isfile(archivo):
+        df_nuevo.to_csv(archivo, index=False)
     else:
-        df_mov.to_csv("Historial_Movimientos.csv", mode='a', header=False, index=False)
+        df_nuevo.to_csv(archivo, mode='a', header=False, index=False)
 
-# --- FUNCIÓN SEGURA PARA CERRAR SESIÓN ---
 def cerrar_sesion():
     st.session_state.modo_admin = False
     st.session_state.pwd_input = ""
 
-# --- MEMORIA DE LA APP ---
+# --- MEMORIA (ESTADO) ---
 if 'seccion' not in st.session_state: st.session_state.seccion = 1
 if 'respuesta_guardada' not in st.session_state: st.session_state.respuesta_guardada = False
 if 'modo_admin' not in st.session_state: st.session_state.modo_admin = False
-
-if 'nombre_seguro' not in st.session_state: st.session_state.nombre_seguro = ""
-if 'email_seguro' not in st.session_state: st.session_state.email_seguro = ""
-if 'nacionalidad_segura' not in st.session_state: st.session_state.nacionalidad_segura = ""
-if 'edad_segura' not in st.session_state: st.session_state.edad_segura = ""
-if 'sexo_seguro' not in st.session_state: st.session_state.sexo_seguro = ""
-if 'carrera_segura' not in st.session_state: st.session_state.carrera_segura = ""
-if 'anio_seguro' not in st.session_state: st.session_state.anio_seguro = ""
-if 'vacunas_seguras' not in st.session_state: st.session_state.vacunas_seguras = []
 if 'pwd_input' not in st.session_state: st.session_state.pwd_input = ""
+if 'respuestas' not in st.session_state: st.session_state.respuestas = {}
+if 'es_argentino' not in st.session_state: st.session_state.es_argentino = True
 
-# --- BARRA LATERAL SECRETA PARA ADMINISTRADORES ---
+# --- BARRA LATERAL SECRETA ---
 st.sidebar.title("🔐 Panel de Control")
-st.sidebar.text_input("Ingresá la clave de admin para ver estadísticas:", type="password", key="pwd_input")
+st.sidebar.text_input("Ingresá la clave de admin:", type="password", key="pwd_input")
+st.session_state.modo_admin = (st.session_state.pwd_input == "fcm2026")
 
-if st.session_state.pwd_input == "fcm2026":
-    st.session_state.modo_admin = True
-else:
-    st.session_state.modo_admin = False
-
-# --- RENDERIZADO SEGÚN EL MODO ---
+# --- RENDERIZADO ---
 if st.session_state.modo_admin:
     st.title("📊 Panel Estadístico FCM (Modo Admin)")
-    
     st.button("⬅️ Volver a la Encuesta", on_click=cerrar_sesion)
-        
     st.write("---")
     
-    if os.path.isfile("Base_Respuestas.csv"):
-        df = pd.read_csv("Base_Respuestas.csv")
+    if os.path.isfile('Base_Respuestas.csv'):
+        df = pd.read_csv('Base_Respuestas.csv')
+        st.metric(label="Total de Encuestas Respondidas", value=len(df))
         
-        col_metrica, col_descarga = st.columns([1, 1])
-        with col_metrica:
-            st.metric(label="Total de Encuestas Respondidas", value=len(df))
-        with col_descarga:
-            buffer = io.BytesIO()
-            with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-                df.to_excel(writer, sheet_name='Base_Completa', index=False)
-                
-                conteo_nac_excel = df["Nacionalidad"].value_counts().reset_index()
-                conteo_nac_excel.columns = ['Nacionalidad', 'Cantidad']
-                conteo_nac_excel.to_excel(writer, sheet_name='Estadisticas_Nacionalidad', index=False)
-                
-                conteo_edad_excel = df["Edad"].value_counts().reset_index()
-                conteo_edad_excel.columns = ['Rango de Edad', 'Cantidad']
-                conteo_edad_excel.to_excel(writer, sheet_name='Estadisticas_Edad', index=False)
-                
-                if os.path.isfile("Historial_Movimientos.csv"):
-                    df_historial = pd.read_csv("Historial_Movimientos.csv")
-                    df_historial.to_excel(writer, sheet_name='Auditoria_Movimientos', index=False)
-            
-            excel_data = buffer.getvalue()
-            st.download_button(
-                label="📥 Descargar Excel Oficial",
-                data=excel_data,
-                file_name=f"Reporte_Completo_FCM_{datetime.now().strftime('%Y%m%d')}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Base_Completa', index=False)
+        st.download_button("📥 Descargar Excel", data=buffer.getvalue(), file_name=f"Reporte_FCM_{datetime.now().strftime('%Y%m%d')}.xlsx")
         
-        st.write("### 🍰 Distribución por Nacionalidad (Porcentajes)")
-        fig_torta = px.pie(df, names='Nacionalidad', hole=0.3, color_discrete_sequence=px.colors.sequential.RdBu)
-        st.plotly_chart(fig_torta)
-        
-        st.write("### 📊 Respuestas por Rangos de Edad")
-        conteo_edad = df["Edad"].value_counts()
-        st.bar_chart(conteo_edad)
-        
-        st.write("### 📋 Tabla General de Datos Limpios")
+        st.write("### 📋 Tabla General de Datos")
         st.dataframe(df)
-        
-        if os.path.isfile("Historial_Movimientos.csv"):
-            st.write("### 👣 Últimos movimientos de usuarios registrados (Auditoría)")
-            st.dataframe(pd.read_csv("Historial_Movimientos.csv"))
-        
     else:
-        st.warning("Aún no hay ninguna respuesta registrada en el archivo para generar estadísticas.")
+        st.warning("Aún no hay respuestas guardadas en esta sesión.")
 
 else:
-    # --- MODO ALUMNO: LA ENCUESTA NORMAL ---
+    # --- MODO ALUMNO ---
     st.title("🏥 Relevamiento de Vacunación FCM")
     st.write("---")
 
     if st.session_state.seccion == 1:
         st.header("SECCIÓN 1 - DATOS GENERALES")
-        # --- ACÁ AGREGAMOS NOMBRE Y MAIL ---
-        nombre = st.text_input("Nombre y Apellido *")
-        email = st.text_input("Correo Electrónico *")
+        n = st.text_input("Nombre y Apellido *")
+        e = st.text_input("Correo Electrónico *")
         edad = st.selectbox("Edad *", ["18 a 25 años", "26 a 35 años", "36 a 45 años", "46 a 55 años", "56 a 65 años"])
         sexo = st.radio("Sexo *", ["Femenino", "Masculino"])
-        nac = st.selectbox("Nacionalidad *", ["Argentina", "Colombia", "Venezuela", "Chile", "Perú", "Bolivia", "Ecuador", "Brasil", "Uruguay", "Paraguay", "Otros"])
-        carrera = st.selectbox("Carrera *", ["Medicina", "Enfermería", "Fonoaudiología", "Kinesiología y fisiatría", "Nutrición", "Obstetricia", "Bioimágenes", "Podología", "Anestesia", "Cosmetología", "Hemoterapia", "Instrumentación quirúrgica", "Prácticas cardiológicas", "Radiología"])
-        anio = st.selectbox("Año que cursa *", ["1er año", "2do año", "3er año", "4to año", "5to año", "6to año"])
+        
+        nac = st.selectbox("Nacionalidad *", ["Argentina", "Colombia", "Venezuela", "Chile", "Perú", "Bolivia", "Ecuador", "Brasil", "Uruguay", "Paraguay", "Otros:"])
+        nac_final = nac
+        if nac == "Otros:":
+            nac_final = st.text_input("Especificá tu nacionalidad *")
+            
+        carrera = st.selectbox("Carrera *", ["Medicina", "Enfermería", "Fonoaudiología", "Kinesiología y fisiatría", "Nutrición", "Obstetricia", "Bioimágenes", "Podología", "Anestesia", "Cosmetología", "Hemoterapia", "Instrumentación quirúrgica", "Prácticas cardiológicas", "Radiología", "Docente", "No docente", "Visitante", "Odontología", "Posgrado"])
+        anio = st.selectbox("Año que cursa *", ["1er año", "2do año", "3er año", "4to año", "5to año", "6to año", "Docente", "No docente", "Visitante", "Posgrado"])
 
         st.write("---")
         if st.button("Siguiente ➡️"):
-            st.session_state.nombre_seguro = nombre
-            st.session_state.email_seguro = email
-            st.session_state.edad_segura = edad
-            st.session_state.sexo_seguro = sexo
-            st.session_state.nacionalidad_segura = nac
-            st.session_state.carrera_segura = carrera
-            st.session_state.anio_seguro = anio
-            
+            st.session_state.es_argentino = (nac == "Argentina")
+            st.session_state.respuestas.update({"Nombre": n, "Email": e, "Edad": edad, "Sexo": sexo, "Nacionalidad": nac_final, "Carrera": carrera, "Anio": anio})
             registrar_movimiento("Sección 1", "Avanzó a Sección 2")
             st.session_state.seccion = 2
             st.rerun()
 
     elif st.session_state.seccion == 2:
-        st.header("SECCIÓN 2 - INFORMACIÓN GENERAL")
-        st.multiselect("¿Por qué medios recibiste información sobre vacunación? *", ["Escuela", "Colegio", "Universidad", "Familia", "Redes sociales", "Campañas de salud (centros de salud, propagandas, etc)", "No recibí información", "Otros"])
-        st.radio("¿Tienes el esquema de vacunación completo? *", ["Si", "No", "No sé"])
-        st.radio("¿Tienes libreta, carnet o registro de vacunación? *", ["Sí, en formato físico", "Sí, en formato digital", "No", "No sé dónde está"])
+        st.header("SECCIÓN 2 - CONOCIMIENTOS SOBRE LA VACUNACIÓN EN ARGENTINA")
+        cal = st.radio("¿Conoces el Calendario Nacional de Vacunación argentino? *", ["Si", "No", "Parcialmente"])
         
-        vacs = st.multiselect("Selecciona las vacunas que te has colocado *", ["BCG", "Neumococo", "Hepatitis A", "Varicela", "HPV", "Hepatitis B", "Doble adulto (Antitetánica)", "Antigripal"])
+        medios = st.multiselect("¿Por qué medios recibes información sobre vacunación? (Seleccione las opciones correctas) *", [
+            "Escuela", "Colegio", "Universidad", "Familia", "Redes sociales", 
+            "Campañas de salud (por ejemplo, centros de salud, propagandas, puntos saludables, etc)", 
+            "No recibí información", "Otros:"
+        ])
+        medios_final = medios.copy()
+        if "Otros:" in medios:
+            otro_medio = st.text_input("Especificá por qué otro medio:")
+            if otro_medio:
+                medios_final.remove("Otros:")
+                medios_final.append(otro_medio)
+
+        esquema = st.radio("¿Tienes el esquema de vacunación completo? *", ["Si", "No", "No sé"])
+        libreta = st.radio("¿Tienes libreta, carnet o registro de vacunación? *", ["Sí, en formato físico", "Sí, en formato digital", "No", "No sé dónde está"])
+        vacs = st.multiselect("Selecciona las vacunas que te has colocado (Seleccione las opciones correctas) *", ["BCG", "Neumococo", "Hepatitis A", "Varicela", "HPV", "Hepatitis B", "Doble adulto (Antitetánica)", "Antigripal"])
         
-        st.multiselect("¿En qué lugares te has vacunado? *", ["Hospitales Públicos", "Hospitales Privados", "Cesac", "Otros"])
-        st.radio("¿Tuviste que pagar alguna vacuna? *", ["Si", "No"])
+        lugares = st.multiselect("¿En qué lugares te vacunas habitualmente? (Seleccione las opciones correctas) *", ["Hospitales Públicos", "Hospitales Privados", "Cesac", "Otros:"])
+        lugares_final = lugares.copy()
+        if "Otros:" in lugares:
+            otro_lugar = st.text_input("Especificá qué otro lugar:")
+            if otro_lugar:
+                lugares_final.remove("Otros:")
+                lugares_final.append(otro_lugar)
+
+        pago = st.radio("¿Tuviste que pagar alguna vacuna? *", ["Si", "No", "Otros:"])
+        pago_final = pago
+        if pago == "Otros:":
+            pago_final = st.text_input("Especificá qué vacuna o situación:")
 
         st.write("---")
         col1, col2 = st.columns(2)
         with col1:
             if st.button("⬅️ Atrás"):
-                registrar_movimiento("Sección 2", "Retrocedió a Sección 1")
                 st.session_state.seccion = 1
                 st.rerun()
         with col2:
             if st.button("Siguiente ➡️"):
-                st.session_state.vacunas_seguras = vacs
+                st.session_state.respuestas.update({
+                    "Conoce_Calendario": cal, 
+                    "Medios_Info": ", ".join(medios_final), 
+                    "Esquema_Completo": esquema, 
+                    "Libreta": libreta, 
+                    "Vacunas": ", ".join(vacs), 
+                    "Lugares_Vacunacion": ", ".join(lugares_final), 
+                    "Pago_Vacuna": pago_final
+                })
                 registrar_movimiento("Sección 2", "Avanzó a Sección 3")
                 st.session_state.seccion = 3
                 st.rerun()
 
     elif st.session_state.seccion == 3:
-        st.header("SECCIÓN 3 - VACUNACIÓN OBLIGATORIA EN LA FACULTAD")
-        st.radio("¿Conoces cuáles son las vacunas requeridas por la FCM para realizar prácticas? *", ["Si", "No", "Parcialmente"])
-        st.radio("¿Ya te colocaste las vacunas obligatorias? *", ["Si", "No"])
+        st.header("SECCIÓN 3 - VACUNACIÓN OBLIGATORIA EN LA FACULTAD DE CIENCIAS MÉDICAS")
+        req = st.radio("¿Conoces cuáles son las vacunas requeridas por la Facultad de Ciencias Médicas para realizar prácticas hospitalarias? *", ["Si", "No", "Parcialmente"])
+        info_facu = st.radio("¿Recibiste información por parte de la facultad sobre las vacunas requeridas? *", ["Si", "No", "No recuerdo"])
+        ya_colocadas = st.radio("¿Ya te colocaste las vacunas obligatorias? *", ["Si", "No"])
+        t_anti = st.radio("¿Hace cuánto tiempo te colocaste la vacuna Doble adulto (antitetánica)? *", ["Hace menos de 10 años", "Hace más de 10 años", "No recuerdo"])
+        
+        m_hepb = st.radio("¿En qué momento te colocaste la vacuna de la Hepatitis B? *", [
+            "Según calendario de vacunación (3 dosis - 0, 1 y 6 meses de vida)", "De adulto"
+        ])
+        
+        s_hepb = st.radio("¿Te hiciste la serología de la Hepatitis B? *", ["Si", "No"])
+        antigripal = st.radio("¿Te colocaste la vacuna Antigripal este año? *", ["Si", "No"])
+        anual = st.radio("¿Te vacunas todos los años contra la gripe? *", ["Si", "No", "Algunos"])
 
         st.write("---")
         col1, col2 = st.columns(2)
         with col1:
             if st.button("⬅️ Atrás"):
-                registrar_movimiento("Sección 3", "Retrocedió a Sección 2")
                 st.session_state.seccion = 2
                 st.rerun()
         with col2:
             if st.button("Siguiente ➡️"):
-                if st.session_state.nacionalidad_segura == "Argentina":
-                    registrar_movimiento("Sección 3", "Avanzó a Sección 5 (Salteo Argentino)")
-                    st.session_state.seccion = 5
-                else:
-                    registrar_movimiento("Sección 3", "Avanzó a Sección 4 (Extranjeros)")
-                    st.session_state.seccion = 4
+                st.session_state.respuestas.update({"Conoce_Requeridas": req, "Info_Facultad": info_facu, "Vacunas_Obligatorias_Colocadas": ya_colocadas, "Tiempo_Antitetanica": t_anti, "Momento_HepB": m_hepb, "Serologia_HepB": s_hepb, "Antigripal_Este_Anio": antigripal, "Gripe_Anual": anual})
+                registrar_movimiento("Sección 3", "Avanzó a Sección 4")
+                st.session_state.seccion = 4
                 st.rerun()
 
     elif st.session_state.seccion == 4:
-        st.header("SECCIÓN 4 - EXTRANJEROS / ESQUEMA FUERA DEL PAÍS")
-        st.radio("¿Cuentas con un registro, libreta o carnet de vacunación de tu país de procedencia? *", ["Si", "No", "No lo sé", "Hice mi esquema en Argentina"])
+        st.header("SECCIÓN 4 - CRITERIOS SOBRE LA VACUNACIÓN")
+        motivo = st.radio("¿Te vacunaste para poder cumplir con un requisito o por consideración propia? *", ["Obligación", "Consideración propia"])
+        recom = st.radio("¿Recomendarías vacunarse a tus amigos y familiares? *", ["Si", "No"])
+        
+        st.write("¿Qué tan necesarias consideras las vacunas? En una escala donde 0 es 'Innecesario' a 10 'Muy necesario' *")
+        necesarias = st.select_slider("", options=list(range(11)), value=5)
+        
+        prev = st.radio("¿Consideras la aplicación de vacunas como método preventivo de complicación de enfermedades? *", ["Si", "No"])
+        
+        st.write("¿Qué tanto confías en la seguridad y eficacia de las vacunas? En una escala donde 1 es 'Ninguna confianza' a 5 es 'Total confianza' *")
+        confianza = st.select_slider(" ", options=[1,2,3,4,5], value=3)
 
         st.write("---")
         col1, col2 = st.columns(2)
         with col1:
             if st.button("⬅️ Atrás"):
-                registrar_movimiento("Sección 4", "Retrocedió a Sección 3")
                 st.session_state.seccion = 3
                 st.rerun()
         with col2:
-            if st.button("Finalizar ✅"):
-                registrar_movimiento("Sección 4", "Finalizó Encuesta")
-                st.session_state.seccion = 5
+            if st.button("Siguiente ➡️"):
+                st.session_state.respuestas.update({"Motivo_Vacunacion": motivo, "Recomendaria": recom, "Nivel_Necesidad": necesarias, "Metodo_Preventivo": prev, "Nivel_Confianza": confianza})
+                
+                # Salto inteligente si es argentino
+                if st.session_state.es_argentino:
+                    registrar_movimiento("Sección 4", "Avanzó a Sección 6 (Salteó la 5)")
+                    st.session_state.seccion = 6
+                else:
+                    registrar_movimiento("Sección 4", "Avanzó a Sección 5")
+                    st.session_state.seccion = 5
+                
                 st.rerun()
 
     elif st.session_state.seccion == 5:
+        st.header("SECCIÓN 5 - EXTRANJEROS / PERSONAS QUE HICIERON SU ESQUEMA DE VACUNACIÓN FUERA DEL PAÍS")
+        carnet_ext = st.radio("¿Cuentas con un registro, libreta o carnet de vacunación de tu país de procedencia? *", ["Si", "No", "No lo sé", "Hice mi esquema en Argentina"])
+        conocia_arg = st.radio("Antes del ingreso al país, ¿conocías las vacunas obligatorias en Argentina? *", ["Si", "No", "Hice mi esquema en Argentina"])
+        facu_solicito = st.radio("¿La facultad te solicitó documentación sobre vacunación? *", ["Si", "No", "No recuerdo", "Hice mi esquema en Argentina"])
+
+        st.write("---")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("⬅️ Atrás"):
+                st.session_state.seccion = 4
+                st.rerun()
+        with col2:
+            if st.button("Siguiente ➡️"):
+                st.session_state.respuestas.update({"Carnet_Exterior": carnet_ext, "Conocia_Obligatorias_Arg": conocia_arg, "Facultad_Solicito_Doc": facu_solicito})
+                registrar_movimiento("Sección 5", "Avanzó a Sección 6")
+                st.session_state.seccion = 6
+                st.rerun()
+
+    elif st.session_state.seccion == 6:
+        st.header("SECCIÓN 6 - INFORMACIÓN")
+        mas_info = st.radio("¿Deseas obtener más información sobre vacunación, esquemas y puntos de atención? *", ["Sí", "No"])
+
+        st.write("---")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("⬅️ Atrás"):
+                if st.session_state.es_argentino:
+                    st.session_state.seccion = 4
+                else:
+                    st.session_state.seccion = 5
+                st.rerun()
+        with col2:
+            if st.button("Finalizar Encuesta ✅"):
+                st.session_state.respuestas.update({"Desea_Mas_Info": mas_info})
+                registrar_movimiento("Sección 6", "Finalizó Encuesta")
+                st.session_state.seccion = 7
+                st.rerun()
+
+    elif st.session_state.seccion == 7:
         st.balloons()
         st.header("¡Gracias por completar la encuesta!")
         
         if not st.session_state.respuesta_guardada:
-            # --- ACÁ GUARDAMOS NOMBRE Y MAIL EN LA BASE DE DATOS ---
-            datos_respuesta = {
-                "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "Nombre": st.session_state.nombre_seguro,
-                "Email": st.session_state.email_seguro,
-                "Edad": st.session_state.edad_segura,
-                "Sexo": st.session_state.sexo_seguro,
-                "Nacionalidad": st.session_state.nacionalidad_segura,
-                "Carrera": st.session_state.carrera_segura,
-                "Año": st.session_state.anio_seguro,
-                "Vacunas": ", ".join(st.session_state.vacunas_seguras)
-            }
-            
-            df_nuevo = pd.DataFrame([datos_respuesta])
-            
-            if not os.path.isfile("Base_Respuestas.csv"):
-                df_nuevo.to_csv("Base_Respuestas.csv", index=False)
-            else:
-                df_nuevo.to_csv("Base_Respuestas.csv", mode='a', header=False, index=False)
-                
-            if st.session_state.nacionalidad_segura == "Argentina":
-                registrar_movimiento("Sección 5", "Finalizó Encuesta (Camino Corto)")
-                
+            datos_finales = {"Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+            datos_finales.update(st.session_state.respuestas)
+            guardar_respuesta_local(datos_finales)
             st.session_state.respuesta_guardada = True
 
+        lista_marcadas = st.session_state.respuestas.get("Vacunas", "")
         vacunas_obligatorias = ["Hepatitis B", "Doble adulto (Antitetánica)", "Antigripal"]
-        lista_marcadas = st.session_state.vacunas_seguras
         vacunas_faltantes = [v for v in vacunas_obligatorias if v not in lista_marcadas]
         
-        # --- CARNET 1: VACUNAS REGISTRADAS (VERDE) ---
         html_carnet_verde = f"""
         <div class='carnet-oficial'>
             <div class='carnet-header-verde'>
                 <h3 style='margin:0;'>🪪 CARNET DE VACUNACIÓN</h3>
-                <span style='font-size:14px; opacity:0.9;'>Certificado de Aplicación Regular</span>
             </div>
             <div class='carnet-body'>
-                <div class='fila-dato'><b>Titular:</b> {st.session_state.nombre_seguro if st.session_state.nombre_seguro else "No especificado"}</div>
-                <div class='fila-dato'><b>Correo:</b> {st.session_state.email_seguro if st.session_state.email_seguro else "No especificado"}</div>
-                <div class='fila-dato'><b>Nacionalidad:</b> {st.session_state.nacionalidad_segura}</div>
+                <div class='fila-dato'><b>Titular:</b> {st.session_state.respuestas.get('Nombre', 'No especificado')}</div>
+                <div class='fila-dato'><b>Nacionalidad:</b> {st.session_state.respuestas.get('Nacionalidad', '')}</div>
                 <br>
                 <h4 style='margin-bottom: 5px; color: #2e7d32;'>✔️ Vacunas Declaradas:</h4>
-        """
-        
-        if len(lista_marcadas) > 0:
-            html_carnet_verde += "<ul class='lista-vacunas'>"
-            for vac in lista_marcadas:
-                html_carnet_verde += f"<li>{vac}</li>"
-            html_carnet_verde += "</ul>"
-        else:
-            html_carnet_verde += "<p style='color: #666;'><i>El titular no registra ninguna vacuna en esta encuesta.</i></p>"
-            
-        html_carnet_verde += """
+                <p style='font-size: 16px; margin-top:0;'>{lista_marcadas if lista_marcadas else 'Ninguna'}</p>
             </div>
-            <div class='carnet-footer'>Documento generado por el Sistema de Relevamiento FCM</div>
         </div>
         """
         st.markdown(html_carnet_verde, unsafe_allow_html=True)
         
-        # --- CARNET 2: VACUNAS FALTANTES (ROJO) ---
         if len(vacunas_faltantes) == 0:
-            st.success("🎉 ¡Felicidades! Tenés tu esquema de obligatorias completo, no se registran faltantes.")
+            st.success("🎉 ¡Felicidades! Esquema obligatorio completo.")
         else:
             html_carnet_rojo = f"""
             <div class='carnet-oficial'>
                 <div class='carnet-header-rojo'>
                     <h3 style='margin:0;'>🚨 AVISO DE FALTANTES</h3>
-                    <span style='font-size:14px; opacity:0.9;'>Requisitos Obligatorios Incompletos</span>
                 </div>
                 <div class='carnet-body'>
                     <h4 style='margin-top: 0; color: #d32f2f;'>Se requiere la aplicación de:</h4>
-                    <ul class='lista-vacunas'>
+                    <ul style='font-size: 16px; line-height: 1.6; margin-top: 10px;'>
             """
             for faltante in vacunas_faltantes:
                 html_carnet_rojo += f"<li>💉 <b>{faltante}</b></li>"
-                
             html_carnet_rojo += """
                     </ul>
                     <hr style='border: 1px solid #eee;'>
-                    <p style='margin-bottom: 5px;'><b>📍 Podés acercarte a vacunarte de forma gratuita a:</b></p>
+                    <p style='margin-bottom: 5px;'><b>📍 Podés acercarte a:</b></p>
                     <ul style='font-size: 14px; color: #444;'>
-                        <li><b>Vacunatorio Hospital de Clínicas:</b> Lun. a Vie. de 8:00 a 13:00 hs.</li>
-                        <li><b>CESAC más cercano:</b> Consultá horarios según tu comuna.</li>
+                        <li><b>Hospital de Clínicas:</b> Lun. a Vie. de 8:00 a 13:00 hs.</li>
+                        <li><b>CESAC más cercano.</b></li>
                     </ul>
-                </div>
-                <div class='carnet-footer'>Por favor, regularice su situación a la brevedad.</div>
-            </div>
+                </div></div>
             """
             st.markdown(html_carnet_rojo, unsafe_allow_html=True)
 
         st.write("---")
         if st.button("Volver al inicio (Nueva respuesta)"):
-            for key in ["seccion", "respuesta_guardada", "nombre_seguro", "email_seguro", "nacionalidad_segura", "edad_segura", "sexo_seguro", "carrera_segura", "anio_seguro", "vacunas_seguras"]:
-                if key in st.session_state:
-                    del st.session_state[key]
+            st.session_state.clear()
             st.rerun()
