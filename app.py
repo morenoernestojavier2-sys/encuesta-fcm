@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import plotly.express as px
+import os
 import io
 import requests
 
@@ -113,18 +114,46 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- FUNCIONES A GOOGLE SHEETS ---
-def registrar_movimiento(seccion_origen, accion_realizada):
+# --- SISTEMA DE DOBLE TRACCIÓN (LOCAL + GOOGLE) ---
+def guardar_respuesta_doble(datos):
+    # 1. Guarda en la memoria de la página
+    archivo = 'Base_Respuestas.csv'
+    df_nuevo = pd.DataFrame([datos])
+    if not os.path.isfile(archivo):
+        df_nuevo.to_csv(archivo, index=False)
+    else:
+        df_nuevo.to_csv(archivo, mode='a', header=False, index=False)
+        
+    # 2. Guarda en Google Drive
+    payload_resp = {"tipo": "respuesta"}
+    payload_resp.update(datos)
+    try:
+        requests.post(URL_DE_TU_GOOGLE_SCRIPT, json=payload_resp)
+    except:
+        pass
+
+def registrar_movimiento_doble(seccion_origen, accion_realizada):
     correo_actual = st.session_state.respuestas.get("Email", "Aún no ingresado")
-    payload = {
-        "tipo": "movimiento",
+    datos = {
         "Fecha_Hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "Email": correo_actual,
         "Seccion_Origen": seccion_origen,
         "Accion": accion_realizada
     }
+    
+    # 1. Guarda en la memoria de la página
+    archivo = 'Historial_Movimientos.csv'
+    df_nuevo = pd.DataFrame([datos])
+    if not os.path.isfile(archivo):
+        df_nuevo.to_csv(archivo, index=False)
+    else:
+        df_nuevo.to_csv(archivo, mode='a', header=False, index=False)
+        
+    # 2. Guarda en Google Drive
+    payload_mov = {"tipo": "movimiento"}
+    payload_mov.update(datos)
     try:
-        requests.post(URL_DE_TU_GOOGLE_SCRIPT, json=payload)
+        requests.post(URL_DE_TU_GOOGLE_SCRIPT, json=payload_mov)
     except:
         pass
 
@@ -151,36 +180,32 @@ if st.session_state.modo_admin:
     st.button("⬅️ Volver a la Encuesta", on_click=cerrar_sesion)
     st.write("---")
     
-    # 🛠️ HERRAMIENTA DE DIAGNÓSTICO
-    if URL_DE_TU_GOOGLE_SCRIPT == "PEGA_ACA_TU_LINK_DE_GOOGLE":
-        st.error("⚠️ Falta pegar el link de Google en la línea 9.")
-        
-    if st.button("🔌 Enviar Prueba al Excel"):
-        st.info("Intentando enviar un dato de prueba...")
-        try:
-            payload_prueba = {"tipo": "respuesta", "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Nombre": "PRUEBA CONEXION"}
-            resp = requests.post(URL_DE_TU_GOOGLE_SCRIPT, json=payload_prueba)
-            if resp.status_code == 200:
-                st.success(f"¡ÉXITO! La señal llegó a Google. (Respuesta: {resp.text})")
-            else:
-                st.error(f"ERROR DE GOOGLE: El servidor rebotó el paquete. (Código: {resp.status_code})")
-        except Exception as e:
-            st.error(f"ERROR TÉCNICO: Detalle: {e}")
-    st.write("---")
+    df = pd.DataFrame()
+    df_hist = pd.DataFrame()
     
-    # Descarga de datos
+    # INTENTAMOS LEER DE GOOGLE PRIMERO (La fuente más segura)
     try:
         res_respuestas = requests.get(f"{URL_DE_TU_GOOGLE_SCRIPT}?sheet=Respuestas").json()
-        df = pd.DataFrame(res_respuestas)
+        if res_respuestas:
+            df = pd.DataFrame(res_respuestas)
     except:
-        df = pd.DataFrame()
+        pass
 
     try:
         res_movimientos = requests.get(f"{URL_DE_TU_GOOGLE_SCRIPT}?sheet=Movimientos").json()
-        df_hist = pd.DataFrame(res_movimientos)
+        if res_movimientos:
+            df_hist = pd.DataFrame(res_movimientos)
     except:
-        df_hist = pd.DataFrame()
+        pass
+        
+    # SI GOOGLE ESTÁ VACÍO O FALLA, LEEMOS DE LA MEMORIA LOCAL
+    if df.empty and os.path.isfile('Base_Respuestas.csv'):
+        df = pd.read_csv('Base_Respuestas.csv')
+        
+    if df_hist.empty and os.path.isfile('Historial_Movimientos.csv'):
+        df_hist = pd.read_csv('Historial_Movimientos.csv')
     
+    # SI HAY DATOS EN ALGÚN LADO, MOSTRAMOS TODO
     if not df.empty:
         st.metric(label="Total de Encuestas Respondidas", value=len(df))
         
@@ -190,22 +215,20 @@ if st.session_state.modo_admin:
         
         with col_torta:
             if "Sexo" in df.columns:
-                # Torta de Sexo
                 fig_sexo = px.pie(df, names="Sexo", title="Porcentaje por Sexo", hole=0.3, color_discrete_sequence=px.colors.qualitative.Pastel)
                 fig_sexo.update_traces(textposition='inside', textinfo='percent+label')
                 st.plotly_chart(fig_sexo, use_container_width=True)
                 
         with col_barra:
             if "Edad" in df.columns:
-                # Barra de Edades
                 df_edad = df["Edad"].value_counts().reset_index()
                 df_edad.columns = ["Edad", "Cantidad"]
-                fig_edad = px.bar(df_edad, x="Edad", y="Cantidad", title="Porcentaje de Edades", text_auto=True, color="Edad")
+                fig_edad = px.bar(df_edad, x="Edad", y="Cantidad", title="Distribución de Edades", text_auto=True, color="Edad")
                 st.plotly_chart(fig_edad, use_container_width=True)
                 
         st.write("---")
         
-        # Botón de descarga
+        # Botón de descarga de Excel Completo
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
             df.to_excel(writer, sheet_name='Base_Completa', index=False)
@@ -214,14 +237,14 @@ if st.session_state.modo_admin:
                 
         st.download_button("📥 Descargar Excel Completo", data=buffer.getvalue(), file_name=f"Reporte_FCM_{datetime.now().strftime('%Y%m%d')}.xlsx")
         
-        st.write("### 📋 Tabla General de Datos")
+        st.write("### 📋 Tabla General de Datos (Incluye Mails)")
         st.dataframe(df)
         
         if not df_hist.empty:
-            st.write("### 👣 Historial de Movimientos (Con Mail del Usuario)")
+            st.write("### 👣 Historial de Movimientos")
             st.dataframe(df_hist)
     else:
-        st.warning("Aún no hay respuestas guardadas para armar los gráficos. ¡Cargá una de prueba o usá el botón de diagnóstico!")
+        st.warning("⚠️ El sistema está listo, pero aún no hay ninguna encuesta registrada. ¡Llená una de prueba para que aparezcan los gráficos y las tablas!")
 
 else:
     # --- MODO ALUMNO ---
@@ -247,7 +270,7 @@ else:
         if st.button("Siguiente ➡️"):
             st.session_state.es_argentino = (nac == "Argentina")
             st.session_state.respuestas.update({"Nombre": n, "Email": e, "Edad": edad, "Sexo": sexo, "Nacionalidad": nac_final, "Carrera": carrera, "Anio": anio})
-            registrar_movimiento("Sección 1", "Avanzó a Sección 2")
+            registrar_movimiento_doble("Sección 1", "Avanzó a Sección 2")
             st.session_state.seccion = 2
             st.rerun()
 
@@ -301,13 +324,13 @@ else:
                     "Lugares_Vacunacion": ", ".join(lugares_final), 
                     "Pago_Vacuna": pago_final
                 })
-                registrar_movimiento("Sección 2", "Avanzó a Sección 3")
+                registrar_movimiento_doble("Sección 2", "Avanzó a Sección 3")
                 st.session_state.seccion = 3
                 st.rerun()
 
     elif st.session_state.seccion == 3:
         st.header("SECCIÓN 3 - VACUNACIÓN OBLIGATORIA EN LA FACULTAD DE CIENCIAS MÉDICAS")
-        req = st.radio("¿Conoces cuáles son las vacunas requeridas por la Facultad de Ciencias Médicas para realizar prácticas hospitalarias? *", ["Si", "No", "Parcialmente"])
+        req = st.radio("¿Conoces cuáles son las vacunas requeridas por la Facultad de Ciencias Médicas para realizar practices hospitalarias? *", ["Si", "No", "Parcialmente"])
         info_facu = st.radio("¿Recibiste información por parte de la facultad sobre las vacunas requeridas? *", ["Si", "No", "No recuerdo"])
         ya_colocadas = st.radio("¿Ya te colocaste las vacunas obligatorias? *", ["Si", "No"])
         t_anti = st.radio("¿Hace cuánto tiempo te colocaste la vacuna Doble adulto (antitetánica)? *", ["Hace menos de 10 años", "Hace más de 10 años", "No recuerdo"])
@@ -329,7 +352,7 @@ else:
         with col2:
             if st.button("Siguiente ➡️"):
                 st.session_state.respuestas.update({"Conoce_Requeridas": req, "Info_Facultad": info_facu, "Vacunas_Obligatorias_Colocadas": ya_colocadas, "Tiempo_Antitetanica": t_anti, "Momento_HepB": m_hepb, "Serologia_HepB": s_hepb, "Antigripal_Este_Anio": antigripal, "Gripe_Anual": anual})
-                registrar_movimiento("Sección 3", "Avanzó a Sección 4")
+                registrar_movimiento_doble("Sección 3", "Avanzó a Sección 4")
                 st.session_state.seccion = 4
                 st.rerun()
 
@@ -357,10 +380,10 @@ else:
                 st.session_state.respuestas.update({"Motivo_Vacunacion": motivo, "Recomendaria": recom, "Nivel_Necesidad": necesarias, "Metodo_Preventivo": prev, "Nivel_Confianza": confianza})
                 
                 if st.session_state.es_argentino:
-                    registrar_movimiento("Sección 4", "Avanzó a Sección 6 (Salteó la 5)")
+                    registrar_movimiento_doble("Sección 4", "Avanzó a Sección 6 (Salteó la 5)")
                     st.session_state.seccion = 6
                 else:
-                    registrar_movimiento("Sección 4", "Avanzó a Sección 5")
+                    registrar_movimiento_doble("Sección 4", "Avanzó a Sección 5")
                     st.session_state.seccion = 5
                 
                 st.rerun()
@@ -380,7 +403,7 @@ else:
         with col2:
             if st.button("Siguiente ➡️"):
                 st.session_state.respuestas.update({"Carnet_Exterior": carnet_ext, "Conocia_Obligatorias_Arg": conocia_arg, "Facultad_Solicito_Doc": facu_solicito})
-                registrar_movimiento("Sección 5", "Avanzó a Sección 6")
+                registrar_movimiento_doble("Sección 5", "Avanzó a Sección 6")
                 st.session_state.seccion = 6
                 st.rerun()
 
@@ -400,7 +423,7 @@ else:
         with col2:
             if st.button("Finalizar Encuesta ✅"):
                 st.session_state.respuestas.update({"Desea_Mas_Info": mas_info})
-                registrar_movimiento("Sección 6", "Finalizó Encuesta")
+                registrar_movimiento_doble("Sección 6", "Finalizó Encuesta")
                 st.session_state.seccion = 7
                 st.rerun()
 
@@ -409,12 +432,9 @@ else:
         st.header("¡Gracias por completar la encuesta!")
         
         if not st.session_state.respuesta_guardada:
-            payload_resp = {"tipo": "respuesta", "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-            payload_resp.update(st.session_state.respuestas)
-            try:
-                requests.post(URL_DE_TU_GOOGLE_SCRIPT, json=payload_resp)
-            except:
-                pass
+            datos_finales = {"Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+            datos_finales.update(st.session_state.respuestas)
+            guardar_respuesta_doble(datos_finales)
             st.session_state.respuesta_guardada = True
 
         lista_marcadas = st.session_state.respuestas.get("Vacunas", "")
