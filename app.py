@@ -1,16 +1,17 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-import os
 import io
+import requests
+
+# ⚠️ PEGÁ TU LINK DE GOOGLE ACÁ ABAJO ADENTRO DE LAS COMILLAS:
+URL_DE_TU_GOOGLE_SCRIPT = "PEGA_ACA_TU_LINK_DE_GOOGLE"
 
 # --- CONFIGURACIÓN Y DISEÑO ---
 st.set_page_config(page_title="Encuesta FCM", page_icon="🏥", layout="centered")
 
-# --- CSS BLINDADO + FONDO LINDO RECUPERADO + RESALTADO MÁXIMO ---
 st.markdown("""
 <style>
-    /* 1. RECUPERAMOS EL FONDO LINDO Y QUE SE VEA BIEN */
     .stApp {
         background-image: url("https://img.freepik.com/free-vector/cartoon-coronavirus-vaccine-background_23-2148861308.jpg") !important;
         background-size: cover !important;
@@ -18,47 +19,42 @@ st.markdown("""
         background-attachment: fixed !important;
     }
     
-    /* 2. CAJA DE LECTURA SEMI-TRANSPARENTE (Como al principio) + SOMBRA FUERTE */
     .block-container {
-        background-color: rgba(255, 255, 255, 0.90) !important; /* Semi-transparente para ver el fondo */
+        background-color: rgba(255, 255, 255, 0.90) !important; 
         border-radius: 15px;
-        box-shadow: 0px 8px 30px rgba(0,0,0,0.9); /* Sombra MUCHO más fuerte para que resalte contra el fondo de colores */
-        color: #000000 !important; /* Texto negro base */
+        box-shadow: 0px 8px 30px rgba(0,0,0,0.9); 
+        color: #000000 !important; 
         margin-top: 20px;
         margin-bottom: 20px;
         padding: 40px;
     }
 
-    /* 3. RESALTAR TODAS LAS LETRAS (Negro Puro, Negrita y Sombra Blanca) */
     .stTextInput label, .stSelectbox label, .stRadio label, .stMultiselect label, .stSlider label, h1, h2, h3, h4, h5, h6, .carnet-body, .stMetric label {
-        color: #000000 !important; /* Negro Puro */
-        font-weight: 700 !important; /* Negrita Gruesa */
-        text-shadow: 1px 1px 2px #FFFFFF !important; /* Sombra blanca sutil para "despegar" del fondo */
+        color: #000000 !important; 
+        font-weight: 700 !important; 
+        text-shadow: 1px 1px 2px #FFFFFF !important; 
     }
     
-    /* 4. RESALTAR MUCHO LOS RECUADROS DE RESPUESTAS (Bordes Negros, Gruesos, Sombras Grandes) */
     .stTextInput input, .stSelectbox div[role="button"], .stRadio div[role="radiogroup"], .stMultiselect div[role="listbox"], .stSlider div[role="slider"] {
-        border: 3px solid #000000 !important; /* Borde NEGRO puro y MUY grueso */
+        border: 3px solid #000000 !important; 
         border-radius: 8px !important;
-        background-color: #FFFFFF !important; /* Fondo blanco sólido ADENTRO para lectura impecable */
-        color: #000000 !important; /* Texto que escribe el alumno en negro */
+        background-color: #FFFFFF !important; 
+        color: #000000 !important; 
         opacity: 1.0 !important;
-        box-shadow: 4px 4px 10px rgba(0,0,0,0.8) !important; /* Sombra prominente para que "salten" */
+        box-shadow: 4px 4px 10px rgba(0,0,0,0.8) !important; 
     }
     
-    /* Efecto al hacer clic en un recuadro */
     .stTextInput input:focus, .stSelectbox div[role="button"]:focus {
         border-color: #0056b3 !important;
         box-shadow: 0 0 0 0.2rem rgba(0,86,179,.25) !important;
     }
 
-    /* 5. BOTONES GRANDES Y RESALTADOS CON BORDES Y SOMBRAS */
     div.stButton > button:first-child, div.stDownloadButton > button:first-child {
         background-color: #0056b3 !important;
         color: #ffffff !important;
         border-radius: 8px !important;
-        border: 3px solid #000000 !important; /* Borde Negro Grueso */
-        box-shadow: 5px 5px 15px rgba(0,0,0,0.8) !important; /* Sombra prominente */
+        border: 3px solid #000000 !important; 
+        box-shadow: 5px 5px 15px rgba(0,0,0,0.8) !important; 
         padding: 12px 24px !important;
         font-weight: bold !important;
         font-size: 18px !important;
@@ -71,12 +67,11 @@ st.markdown("""
         box-shadow: 0px 0px 0px #003d82 !important;
     }
     
-    /* 6. CARNETS SÓLIDOS AL FINAL CON BORDES RESALTADOS */
     .carnet-oficial {
-        background-color: #FFFFFF !important; /* Blanco Puro SÓLIDO */
+        background-color: #FFFFFF !important; 
         border-radius: 12px !important;
         box-shadow: 0 8px 16px rgba(0,0,0,0.3) !important;
-        border: 4px solid #000000 !important; /* Borde Negro MUY Grueso */
+        border: 4px solid #000000 !important; 
         overflow: hidden !important;
         margin-bottom: 25px !important;
         font-family: 'Arial', sans-serif !important;
@@ -98,10 +93,10 @@ st.markdown("""
     }
     .carnet-body {
         padding: 20px !important;
-        color: #000000 !important; /* Texto negro base en carnet */
+        color: #000000 !important; 
     }
     .fila-dato {
-        border-bottom: 2px solid #000000 !important; /* Línea de puntos negra */
+        border-bottom: 2px solid #000000 !important; 
         padding: 10px 0 !important;
         font-size: 15px !important;
     }
@@ -114,7 +109,6 @@ st.markdown("""
         border-top: 1px solid #ddd !important;
     }
     
-    /* Forzar color de texto negro para el agradecimiento final si no está en carnet */
     .stMarkdown div p {
         color: #000000;
         font-weight: 700;
@@ -123,27 +117,18 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- FUNCIONES DE GUARDADO LOCAL ---
-def guardar_respuesta_local(datos):
-    archivo = 'Base_Respuestas.csv'
-    df_nuevo = pd.DataFrame([datos])
-    if not os.path.isfile(archivo):
-        df_nuevo.to_csv(archivo, index=False)
-    else:
-        df_nuevo.to_csv(archivo, mode='a', header=False, index=False)
-
+# --- FUNCIONES A GOOGLE SHEETS ---
 def registrar_movimiento(seccion_origen, accion_realizada):
-    archivo = 'Historial_Movimientos.csv'
-    datos = {
+    payload = {
+        "tipo": "movimiento",
         "Fecha_Hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "Seccion_Origen": seccion_origen,
         "Accion": accion_realizada
     }
-    df_nuevo = pd.DataFrame([datos])
-    if not os.path.isfile(archivo):
-        df_nuevo.to_csv(archivo, index=False)
-    else:
-        df_nuevo.to_csv(archivo, mode='a', header=False, index=False)
+    try:
+        requests.post(URL_DE_TU_GOOGLE_SCRIPT, json=payload)
+    except:
+        pass
 
 def cerrar_sesion():
     st.session_state.modo_admin = False
@@ -168,19 +153,37 @@ if st.session_state.modo_admin:
     st.button("⬅️ Volver a la Encuesta", on_click=cerrar_sesion)
     st.write("---")
     
-    if os.path.isfile('Base_Respuestas.csv'):
-        df = pd.read_csv('Base_Respuestas.csv')
+    try:
+        res_respuestas = requests.get(f"{URL_DE_TU_GOOGLE_SCRIPT}?sheet=Respuestas").json()
+        df = pd.DataFrame(res_respuestas)
+    except:
+        df = pd.DataFrame()
+
+    try:
+        res_movimientos = requests.get(f"{URL_DE_TU_GOOGLE_SCRIPT}?sheet=Movimientos").json()
+        df_hist = pd.DataFrame(res_movimientos)
+    except:
+        df_hist = pd.DataFrame()
+    
+    if not df.empty:
         st.metric(label="Total de Encuestas Respondidas", value=len(df))
         
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
             df.to_excel(writer, sheet_name='Base_Completa', index=False)
-        st.download_button("📥 Descargar Excel", data=buffer.getvalue(), file_name=f"Reporte_FCM_{datetime.now().strftime('%Y%m%d')}.xlsx")
+            if not df_hist.empty:
+                df_hist.to_excel(writer, sheet_name='Movimientos', index=False)
+                
+        st.download_button("📥 Descargar Excel para Diagnósticos", data=buffer.getvalue(), file_name=f"Reporte_FCM_{datetime.now().strftime('%Y%m%d')}.xlsx")
         
-        st.write("### 📋 Tabla General de Datos")
+        st.write("### 📋 Tabla General de Datos en Vivo")
         st.dataframe(df)
+        
+        if not df_hist.empty:
+            st.write("### 👣 Historial de Movimientos")
+            st.dataframe(df_hist)
     else:
-        st.warning("Aún no hay respuestas guardadas en esta sesión.")
+        st.warning("Aún no hay respuestas guardadas en Google Drive.")
 
 else:
     # --- MODO ALUMNO ---
@@ -315,7 +318,6 @@ else:
             if st.button("Siguiente ➡️"):
                 st.session_state.respuestas.update({"Motivo_Vacunacion": motivo, "Recomendaria": recom, "Nivel_Necesidad": necesarias, "Metodo_Preventivo": prev, "Nivel_Confianza": confianza})
                 
-                # Salto inteligente si es argentino
                 if st.session_state.es_argentino:
                     registrar_movimiento("Sección 4", "Avanzó a Sección 6 (Salteó la 5)")
                     st.session_state.seccion = 6
@@ -369,9 +371,12 @@ else:
         st.header("¡Gracias por completar la encuesta!")
         
         if not st.session_state.respuesta_guardada:
-            datos_finales = {"Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-            datos_finales.update(st.session_state.respuestas)
-            guardar_respuesta_local(datos_finales)
+            payload_resp = {"tipo": "respuesta", "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+            payload_resp.update(st.session_state.respuestas)
+            try:
+                requests.post(URL_DE_TU_GOOGLE_SCRIPT, json=payload_resp)
+            except:
+                pass
             st.session_state.respuesta_guardada = True
 
         lista_marcadas = st.session_state.respuestas.get("Vacunas", "")
