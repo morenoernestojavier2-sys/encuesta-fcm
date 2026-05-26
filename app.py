@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import plotly.express as px
 import io
 import requests
 
@@ -158,7 +159,7 @@ if st.session_state.modo_admin:
     if URL_DE_TU_GOOGLE_SCRIPT == "PEGA_ACA_TU_LINK_DE_GOOGLE":
         st.error("⚠️ Todavía no pegaste el link de Google en la línea 8 del código.")
     elif not URL_DE_TU_GOOGLE_SCRIPT.endswith("/exec"):
-        st.warning("⚠️ Ojo: Tu link de Google no termina en '/exec'. Por lo general, los links correctos terminan con esa palabra. Revisá si lo copiaste entero.")
+        st.warning("⚠️ Ojo: Tu link de Google no termina en '/exec'.")
         
     if st.button("🔌 Enviar Prueba al Excel"):
         st.info("Intentando enviar un dato de prueba...")
@@ -167,13 +168,13 @@ if st.session_state.modo_admin:
             resp = requests.post(URL_DE_TU_GOOGLE_SCRIPT, json=payload_prueba)
             if resp.status_code == 200:
                 st.success(f"¡ÉXITO! La señal llegó a Google. (Respuesta: {resp.text})")
-                st.write("Fijate ahora mismo en tu Excel si apareció un nombre que dice 'PRUEBA CONEXION'.")
             else:
                 st.error(f"ERROR DE GOOGLE: El servidor rebotó el paquete. (Código: {resp.status_code})")
         except Exception as e:
-            st.error(f"ERROR TÉCNICO: La página no pudo salir a internet para mandar el dato. Detalle: {e}")
+            st.error(f"ERROR TÉCNICO: Detalle: {e}")
     st.write("---")
     
+    # Descarga de datos desde Google
     try:
         res_respuestas = requests.get(f"{URL_DE_TU_GOOGLE_SCRIPT}?sheet=Respuestas").json()
         df = pd.DataFrame(res_respuestas)
@@ -189,6 +190,22 @@ if st.session_state.modo_admin:
     if not df.empty:
         st.metric(label="Total de Encuestas Respondidas", value=len(df))
         
+        # --- 📊 TORTAS DE INFORMACIÓN RECUPERADAS ---
+        st.write("### 📊 Gráficos Estadísticos (Tortas)")
+        col_torta1, col_torta2 = st.columns(2)
+        
+        with col_torta1:
+            if "Esquema_Completo" in df.columns:
+                fig_esquema = px.pie(df, names="Esquema_Completo", title="Estado del Esquema de Vacunación", hole=0.2)
+                st.plotly_chart(fig_esquema, use_container_width=True)
+                
+        with col_torta2:
+            if "Carrera" in df.columns:
+                fig_carrera = px.pie(df, names="Carrera", title="Distribución por Carrera")
+                st.plotly_chart(fig_carrera, use_container_width=True)
+        st.write("---")
+        
+        # Botón de descarga
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
             df.to_excel(writer, sheet_name='Base_Completa', index=False)
@@ -197,11 +214,11 @@ if st.session_state.modo_admin:
                 
         st.download_button("📥 Descargar Excel para Diagnósticos", data=buffer.getvalue(), file_name=f"Reporte_FCM_{datetime.now().strftime('%Y%m%d')}.xlsx")
         
-        st.write("### 📋 Tabla General de Datos en Vivo")
+        st.write("### 📋 Tabla General de Datos (Incluye Mails)")
         st.dataframe(df)
         
         if not df_hist.empty:
-            st.write("### 👣 Historial de Movimientos")
+            st.write("### 👣 Historial de Movimientos Generales")
             st.dataframe(df_hist)
     else:
         st.warning("Aún no hay respuestas guardadas en Google Drive.")
@@ -278,7 +295,7 @@ else:
                 st.session_state.respuestas.update({
                     "Conoce_Calendario": cal, 
                     "Medios_Info": ", ".join(medios_final), 
-                    "Esquema_Completo": esquema, 
+                    "Esquema_Completo": scheme, 
                     "Libreta": libreta, 
                     "Vacunas": ", ".join(vacs), 
                     "Lugares_Vacunacion": ", ".join(lugares_final), 
@@ -396,10 +413,8 @@ else:
             payload_resp.update(st.session_state.respuestas)
             try:
                 res = requests.post(URL_DE_TU_GOOGLE_SCRIPT, json=payload_resp)
-                if res.status_code != 200:
-                    st.error(f"⚠️ Atención: Falló el guardado en Excel. (Código: {res.status_code})")
-            except Exception as e:
-                st.error(f"⚠️ Atención: Error técnico impidió guardar los datos. ({e})")
+            except:
+                pass
             st.session_state.respuesta_guardada = True
 
         lista_marcadas = st.session_state.respuestas.get("Vacunas", "")
