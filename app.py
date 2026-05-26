@@ -4,8 +4,8 @@ from datetime import datetime
 import io
 import requests
 
-# ⚠️ PEGÁ TU LINK DE GOOGLE ACÁ ABAJO ADENTRO DE LAS COMILLAS:
-URL_DE_TU_GOOGLE_SCRIPT = "PEGA_ACA_TU_LINK_DE_GOOGLE"
+# ⚠️ TU LINK DE GOOGLE YA ESTÁ CONFIGURADO ACÁ:
+URL_DE_TU_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbyoYN3-nC8mhJWiNE14_tEcTjqPlh2q0R10Cy3ucE97DmtRmkLQfWlGcTT93EmWnfn7/exec"
 
 # --- CONFIGURACIÓN Y DISEÑO ---
 st.set_page_config(page_title="Encuesta FCM", page_icon="🏥", layout="centered")
@@ -153,7 +153,7 @@ if st.session_state.modo_admin:
     st.button("⬅️ Volver a la Encuesta", on_click=cerrar_sesion)
     st.write("---")
     
-    # 🛠️ NUEVA HERRAMIENTA DE DIAGNÓSTICO
+    # 🛠️ HERRAMIENTA DE DIAGNÓSTICO
     st.write("### 🛠️ Herramienta de Diagnóstico de Conexión")
     if URL_DE_TU_GOOGLE_SCRIPT == "PEGA_ACA_TU_LINK_DE_GOOGLE":
         st.error("⚠️ Todavía no pegaste el link de Google en la línea 8 del código.")
