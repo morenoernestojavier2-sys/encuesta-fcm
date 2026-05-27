@@ -126,6 +126,26 @@ st.markdown("""
         padding: 10px 0 !important;
         font-size: 15px !important;
     }
+    
+    /* ESTILOS PARA LAS SOLAPAS */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 20px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: #f0f2f6;
+        border-radius: 10px 10px 0px 0px;
+        padding: 10px 20px;
+        color: #000000;
+        font-weight: bold;
+        border: 2px solid #000000;
+        border-bottom: none;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #0056b3 !important;
+        color: #ffffff !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -170,6 +190,8 @@ if st.sidebar.text_input("Clave admin:", type="password") == "fcm2026":
     
     df = pd.DataFrame()
     df_hist = pd.DataFrame()
+    
+    # Recolección de datos (Google + Local)
     try:
         res = requests.get(f"{URL_DE_TU_GOOGLE_SCRIPT}?sheet=Respuestas").json()
         if res: df = pd.DataFrame(res)
@@ -184,38 +206,51 @@ if st.sidebar.text_input("Clave admin:", type="password") == "fcm2026":
     if df_hist.empty and os.path.isfile('Historial_Movimientos.csv'): df_hist = pd.read_csv('Historial_Movimientos.csv')
 
     if not df.empty:
-        st.metric(label="Total de Encuestas", value=len(df))
-        c1, c2 = st.columns(2)
+        st.metric(label="Total de Encuestas Respondidas", value=len(df))
         
-        # ESCUDO ANTIBLOQUEOS EN LOS GRÁFICOS
-        with c1: 
-            if "Sexo" in df.columns:
-                df_sexo = df.dropna(subset=["Sexo"])
-                if not df_sexo.empty:
-                    fig_sexo = px.pie(df_sexo, names="Sexo", title="Participación por Sexo", hole=0.3)
+        # ACA CREAMOS LAS DOS SOLAPAS
+        solapa_datos, solapa_graficos = st.tabs(["📋 Tablas y Excel", "📊 Gráficos Estadísticos"])
+        
+        with solapa_datos:
+            st.write("### 📋 Base de Datos en Vivo")
+            
+            # Botón de descarga
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+                df.to_excel(writer, sheet_name='Base_Completa', index=False)
+                if not df_hist.empty: df_hist.to_excel(writer, sheet_name='Movimientos', index=False)
+            st.download_button("📥 Descargar Excel Completo", data=buffer.getvalue(), file_name=f"Reporte_FCM_{datetime.now().strftime('%Y%m%d')}.xlsx")
+            
+            st.dataframe(df)
+            
+            if not df_hist.empty:
+                st.write("### 👣 Historial de Navegación")
+                st.dataframe(df_hist)
+
+        with solapa_graficos:
+            st.write("### 📊 Análisis Visual")
+            col_torta, col_barra = st.columns(2)
+            
+            with col_torta:
+                if "Sexo" in df.columns:
+                    # Llenamos los vacíos para que no explote
+                    df_sexo = df["Sexo"].fillna("Sin especificar").value_counts().reset_index()
+                    df_sexo.columns = ["Sexo", "Cantidad"]
+                    fig_sexo = px.pie(df_sexo, names="Sexo", values="Cantidad", title="Participación por Sexo", hole=0.3, color_discrete_sequence=px.colors.qualitative.Pastel)
+                    fig_sexo.update_traces(textposition='inside', textinfo='percent+label')
                     st.plotly_chart(fig_sexo, use_container_width=True)
-        with c2: 
-            if "Edad" in df.columns:
-                df_edad = df.dropna(subset=["Edad"])
-                if not df_edad.empty:
-                    fig_edad = px.bar(df_edad["Edad"].value_counts().reset_index(), x="Edad", y="count", title="Distribución por Edad")
+            
+            with col_barra:
+                if "Edad" in df.columns:
+                    # Llenamos los vacíos para que no explote
+                    df_edad = df["Edad"].fillna("Sin especificar").value_counts().reset_index()
+                    df_edad.columns = ["Edad", "Cantidad"]
+                    fig_edad = px.bar(df_edad, x="Edad", y="Cantidad", title="Distribución por Edades", text_auto=True, color="Edad")
                     st.plotly_chart(fig_edad, use_container_width=True)
-        
-        buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-            df.to_excel(writer, sheet_name='Base_Completa', index=False)
-            if not df_hist.empty: df_hist.to_excel(writer, sheet_name='Movimientos', index=False)
-                
-        st.download_button("📥 Descargar Excel Completo", data=buffer.getvalue(), file_name=f"Reporte_FCM_{datetime.now().strftime('%Y%m%d')}.xlsx")
-        
-        st.write("### 📋 Datos en Vivo")
-        st.dataframe(df)
-        
-        if not df_hist.empty:
-            st.write("### 👣 Historial de Navegación")
-            st.dataframe(df_hist)
+                    
     else:
-        st.warning("Aún no hay respuestas guardadas.")
+        st.warning("Aún no hay respuestas guardadas en el sistema para procesar.")
+
 else:
     # --- MODO ALUMNO ---
     st.markdown("""
