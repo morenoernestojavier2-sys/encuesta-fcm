@@ -208,13 +208,12 @@ if st.sidebar.text_input("Clave admin:", type="password") == "fcm2026":
     if not df.empty:
         st.metric(label="Total de Encuestas Respondidas", value=len(df))
         
-        # ACA CREAMOS LAS DOS SOLAPAS
+        # SOLAPAS
         solapa_datos, solapa_graficos = st.tabs(["📋 Tablas y Excel", "📊 Gráficos Estadísticos"])
         
         with solapa_datos:
             st.write("### 📋 Base de Datos en Vivo")
             
-            # Botón de descarga
             buffer = io.BytesIO()
             with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
                 df.to_excel(writer, sheet_name='Base_Completa', index=False)
@@ -232,21 +231,29 @@ if st.sidebar.text_input("Clave admin:", type="password") == "fcm2026":
             col_torta, col_barra = st.columns(2)
             
             with col_torta:
-                if "Sexo" in df.columns:
-                    # Llenamos los vacíos para que no explote
-                    df_sexo = df["Sexo"].fillna("Sin especificar").value_counts().reset_index()
-                    df_sexo.columns = ["Sexo", "Cantidad"]
-                    fig_sexo = px.pie(df_sexo, names="Sexo", values="Cantidad", title="Participación por Sexo", hole=0.3, color_discrete_sequence=px.colors.qualitative.Pastel)
+                # Buscador inteligente de columna Sexo (ignora mayúsculas/minúsculas)
+                col_sexo = [c for c in df.columns if "sex" in c.lower()]
+                if col_sexo:
+                    nombre_col = col_sexo[0]
+                    df_sexo = df[nombre_col].fillna("Sin especificar").value_counts().reset_index()
+                    df_sexo.columns = [nombre_col, "Cantidad"]
+                    fig_sexo = px.pie(df_sexo, names=nombre_col, values="Cantidad", title="Participación por Sexo", hole=0.3, color_discrete_sequence=px.colors.qualitative.Pastel)
                     fig_sexo.update_traces(textposition='inside', textinfo='percent+label')
                     st.plotly_chart(fig_sexo, use_container_width=True)
+                else:
+                    st.info("ℹ️ No hay datos de 'Sexo' en estas respuestas para generar el gráfico.")
             
             with col_barra:
-                if "Edad" in df.columns:
-                    # Llenamos los vacíos para que no explote
-                    df_edad = df["Edad"].fillna("Sin especificar").value_counts().reset_index()
-                    df_edad.columns = ["Edad", "Cantidad"]
-                    fig_edad = px.bar(df_edad, x="Edad", y="Cantidad", title="Distribución por Edades", text_auto=True, color="Edad")
+                # Buscador inteligente de columna Edad
+                col_edad = [c for c in df.columns if "edad" in c.lower()]
+                if col_edad:
+                    nombre_col = col_edad[0]
+                    df_edad = df[nombre_col].fillna("Sin especificar").value_counts().reset_index()
+                    df_edad.columns = [nombre_col, "Cantidad"]
+                    fig_edad = px.bar(df_edad, x=nombre_col, y="Cantidad", title="Distribución por Edades", text_auto=True, color=nombre_col)
                     st.plotly_chart(fig_edad, use_container_width=True)
+                else:
+                    st.info("ℹ️ No hay datos de 'Edad' en estas respuestas para generar el gráfico.")
                     
     else:
         st.warning("Aún no hay respuestas guardadas en el sistema para procesar.")
