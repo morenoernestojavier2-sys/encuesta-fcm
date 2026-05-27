@@ -1,11 +1,20 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import plotly.express as px
 import os
 import io
 import requests
 import streamlit.components.v1 as components
+
+# --- CONFIGURACIÓN DE ZONA HORARIA (ARGENTINA UTC-3) ---
+TZ_ARG = timezone(timedelta(hours=-3))
+
+def obtener_hora_arg():
+    return datetime.now(TZ_ARG).strftime("%Y-%m-%d %H:%M:%S")
+
+def obtener_fecha_archivo():
+    return datetime.now(TZ_ARG).strftime('%Y%m%d')
 
 # --- CONFIGURACIÓN ---
 URL_DE_TU_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbyoYN3-nC8mhJWiNE14_tEcTjqPlh2q0R10Cy3ucE97DmtRmkLQfWlGcTT93EmWnfn7/exec"
@@ -153,7 +162,7 @@ def guardar_respuesta_doble(datos):
 
 def registrar_movimiento_doble(seccion_origen, accion_realizada):
     correo_actual = st.session_state.respuestas.get("Email", "SIN_MAIL")
-    datos = {"Fecha_Hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Email": correo_actual, "Seccion_Origen": seccion_origen, "Accion": accion_realizada}
+    datos = {"Fecha_Hora": obtener_hora_arg(), "Email": correo_actual, "Seccion_Origen": seccion_origen, "Accion": accion_realizada}
     archivo = 'Historial_Movimientos.csv'
     df_nuevo = pd.DataFrame([datos])
     if not os.path.isfile(archivo): df_nuevo.to_csv(archivo, index=False)
@@ -201,20 +210,29 @@ if st.session_state.modo_admin:
     if df_hist.empty and os.path.isfile('Historial_Movimientos.csv'): df_hist = pd.read_csv('Historial_Movimientos.csv')
 
     if not df.empty:
-        # --- TARJETAS MÉTRICAS 3D FLOTANTES ---
+        # --- TARJETAS MÉTRICAS 3D FLOTANTES (Con blindaje anti-nulos) ---
         col_m1, col_m2, col_m3 = st.columns(3)
         
-        if "Esquema_Completo" in df.columns:
-            s_esq = df["Esquema_Completo"].astype(str).str.lower()
-            completos = len(s_esq[s_esq.str.contains("si|completo", na=False)])
-            porcentaje_cob = f"{(completos / len(df) * 100):.1f}%"
+        # Blindaje Cobertura
+        col_esq = [c for c in df.columns if "esquema" in c.lower()]
+        if col_esq:
+            s_esq = df[col_esq[0]].astype(str).str.lower()
+            validos_esq = s_esq[s_esq != 'nan']
+            if len(validos_esq) > 0:
+                completos = len(validos_esq[validos_esq.str.contains("si|completo", na=False)])
+                porcentaje_cob = f"{(completos / len(validos_esq) * 100):.1f}%"
+            else: porcentaje_cob = "Sin datos"
         else: porcentaje_cob = "Sin datos"
             
-        if "Nivel_Confianza" in df.columns:
-            s_conf = pd.to_numeric(df["Nivel_Confianza"], errors='coerce')
-            if s_conf.notna().any(): promedio_conf = f"{s_conf.mean():.1f} / 5"
-            else: promedio_conf = "N/A"
-        else: promedio_conf = "N/A"
+        # Blindaje Confianza
+        col_conf = [c for c in df.columns if "confianza" in c.lower()]
+        if col_conf:
+            s_conf = pd.to_numeric(df[col_conf[0]], errors='coerce')
+            if s_conf.notna().any():
+                num_conf = s_conf.mean()
+                promedio_conf = f"{num_conf:.1f} / 5"
+            else: promedio_conf = "Sin datos"
+        else: promedio_conf = "Sin datos"
 
         with col_m1:
             st.markdown(f"""
@@ -252,8 +270,9 @@ if st.session_state.modo_admin:
             st.write("### 🔍 Filtros de Búsqueda Rápida")
             c_fil1, c_fil2 = st.columns(2)
             
-            if "Carrera" in df.columns:
-                lista_carreras = ["TODAS"] + list(df["Carrera"].dropna().unique())
+            col_carrera_opt = [c for c in df.columns if "carrera" in c.lower()]
+            if col_carrera_opt:
+                lista_carreras = ["TODAS"] + list(df[col_carrera_opt[0]].dropna().unique())
                 filtro_carrera = st.selectbox("Filtrar por Carrera:", lista_carreras)
             else:
                 filtro_carrera = "TODAS"
@@ -261,13 +280,14 @@ if st.session_state.modo_admin:
             filtro_buscar = st.text_input("Buscar por Nombre o Email del Alumno:").upper()
             
             df_filtrado = df.copy()
-            if "Carrera" in df.columns and filtro_carrera != "TODAS":
-                df_filtrado = df_filtrado[df_filtrado["Carrera"] == filtro_carrera]
-            
+            if col_carrera_opt and filtro_carrera != "TODAS":
+                df_filtrado = df_filtrado[df_filtrado[col_carrera_opt[0]] == filtro_carrera]
             if filtro_buscar:
+                col_nom = [c for c in df.columns if "nombre" in c.lower()]
+                col_em = [c for c in df.columns if "email" in c.lower() or "mail" in c.lower()]
                 condicion = pd.Series(False, index=df_filtrado.index)
-                if "Nombre" in df.columns: condicion = condicion | df_filtrado["Nombre"].astype(str).str.upper().str.contains(filtro_buscar)
-                if "Email" in df.columns: condicion = condicion | df_filtrado["Email"].astype(str).str.upper().str.contains(filtro_buscar)
+                if col_nom: condicion = condicion | df_filtrado[col_nom[0]].astype(str).str.upper().str.contains(filtro_buscar)
+                if col_em: condicion = condicion | df_filtrado[col_em[0]].astype(str).str.upper().str.contains(filtro_buscar)
                 df_filtrado = df_filtrado[condicion]
 
             st.write("---")
@@ -275,7 +295,7 @@ if st.session_state.modo_admin:
             with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
                 df.to_excel(writer, sheet_name='Base_Completa', index=False)
                 if not df_hist.empty: df_hist.to_excel(writer, sheet_name='Movimientos', index=False)
-            st.download_button("📥 Descargar Excel de Diagnósticos", data=buffer.getvalue(), file_name=f"Reporte_FCM_{datetime.now().strftime('%Y%m%d')}.xlsx")
+            st.download_button("📥 Descargar Excel de Diagnósticos", data=buffer.getvalue(), file_name=f"Reporte_FCM_{obtener_fecha_archivo()}.xlsx")
             
             st.dataframe(df_filtrado)
             
@@ -286,41 +306,38 @@ if st.session_state.modo_admin:
         with solapa_graficos:
             st.write("### 📊 Análisis Visual Demográfico y Sanitario")
             
-            # BLINDAJE ABSOLUTO: Obligamos a que las columnas existan aunque las pruebas viejas no las tengan
-            for col in ["Sexo", "Edad", "Esquema_Completo", "Carrera"]:
-                if col not in df.columns:
-                    df[col] = "Sin datos (pruebas)"
+            # --- FUNCION INTERNA PARA GRÁFICOS BLINDADOS ---
+            def crear_grafico(df_fuente, keyword, tipo, titulo):
+                cols = [c for c in df_fuente.columns if keyword.lower() in str(c).lower()]
+                if cols:
+                    nombre = cols[0]
+                    # Limpieza maestra de datos nulos y vacíos
+                    serie_limpia = df_fuente[nombre].astype(str).replace(['', 'nan', 'None', 'NaN', '<NA>'], 'Sin especificar')
+                    df_plot = serie_limpia.value_counts().reset_index()
+                    df_plot.columns = [nombre, "Cantidad"]
+                    
+                    if not df_plot.empty and len(df_plot) > 0:
+                        try:
+                            if tipo == "torta":
+                                fig = px.pie(df_plot, names=nombre, values="Cantidad", title=titulo, hole=0.3, color_discrete_sequence=px.colors.qualitative.Pastel)
+                                fig.update_traces(textposition='inside', textinfo='percent+label')
+                            else:
+                                fig = px.bar(df_plot, x=nombre, y="Cantidad", title=titulo, text_auto=True, color=nombre)
+                            st.plotly_chart(fig, use_container_width=True)
+                            return
+                        except Exception as e:
+                            st.error(f"Error técnico al dibujar {titulo}.")
+                            return
+                st.info(f"ℹ️ Aún no hay datos suficientes de '{keyword}' para el gráfico: {titulo}")
 
-            # DIBUJAMOS LOS 4 GRÁFICOS DE FORMA DIRECTA
+            # Dibujamos de forma segura
             col_g1, col_g2 = st.columns(2)
+            with col_g1: crear_grafico(df, "sex", "torta", "Participación por Sexo")
+            with col_g2: crear_grafico(df, "edad", "barra", "Distribución por Edades")
             
-            with col_g1:
-                df_sexo = df["Sexo"].astype(str).replace(['', 'nan', 'None', 'NaN', '<NA>'], 'Sin especificar').value_counts().reset_index()
-                df_sexo.columns = ["Sexo", "Cantidad"]
-                fig_sexo = px.pie(df_sexo, names="Sexo", values="Cantidad", title="Participación por Sexo", hole=0.3, color_discrete_sequence=px.colors.qualitative.Pastel)
-                fig_sexo.update_traces(textposition='inside', textinfo='percent+label')
-                st.plotly_chart(fig_sexo, use_container_width=True)
-                
-            with col_g2:
-                df_edad = df["Edad"].astype(str).replace(['', 'nan', 'None', 'NaN', '<NA>'], 'Sin especificar').value_counts().reset_index()
-                df_edad.columns = ["Edad", "Cantidad"]
-                fig_edad = px.bar(df_edad, x="Edad", y="Cantidad", title="Distribución por Edades", text_auto=True, color="Edad")
-                st.plotly_chart(fig_edad, use_container_width=True)
-                
             col_g3, col_g4 = st.columns(2)
-            
-            with col_g3:
-                df_esq = df["Esquema_Completo"].astype(str).replace(['', 'nan', 'None', 'NaN', '<NA>'], 'Sin especificar').value_counts().reset_index()
-                df_esq.columns = ["Esquema_Completo", "Cantidad"]
-                fig_esq = px.pie(df_esq, names="Esquema_Completo", values="Cantidad", title="Estado de Avance del Esquema", hole=0.3, color_discrete_sequence=px.colors.qualitative.Safe)
-                fig_esq.update_traces(textposition='inside', textinfo='percent+label')
-                st.plotly_chart(fig_esq, use_container_width=True)
-                
-            with col_g4:
-                df_car = df["Carrera"].astype(str).replace(['', 'nan', 'None', 'NaN', '<NA>'], 'Sin especificar').value_counts().reset_index()
-                df_car.columns = ["Carrera", "Cantidad"]
-                fig_car = px.bar(df_car, x="Carrera", y="Cantidad", title="Afluencia por Especialidad / Carrera", text_auto=True, color="Carrera")
-                st.plotly_chart(fig_car, use_container_width=True)
+            with col_g3: crear_grafico(df, "esquema", "torta", "Estado de Avance del Esquema")
+            with col_g4: crear_grafico(df, "carrera", "barra", "Afluencia por Especialidad / Carrera")
 
     else:
         st.warning("Aún no hay respuestas guardadas en el sistema para procesar.")
@@ -515,7 +532,7 @@ else:
         st.header("¡Gracias por completar la encuesta!")
         
         if not st.session_state.respuesta_guardada:
-            datos_finales = {"Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+            datos_finales = {"Fecha": obtener_hora_arg()}
             datos_finales.update(st.session_state.respuestas)
             guardar_respuesta_doble(datos_finales)
             st.session_state.respuesta_guardada = True
