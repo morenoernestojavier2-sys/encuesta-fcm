@@ -10,7 +10,7 @@ import requests
 URL_DE_TU_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbyoYN3-nC8mhJWiNE14_tEcTjqPlh2q0R10Cy3ucE97DmtRmkLQfWlGcTT93EmWnfn7/exec"
 st.set_page_config(page_title="Encuesta de Vacunación", page_icon="🏥", layout="wide")
 
-# --- DISEÑO VISUAL BLINDADO Y AJUSTE DE TAMAÑOS ---
+# --- DISEÑO VISUAL BLINDADO ---
 st.markdown("""
 <style>
     .stApp {
@@ -27,7 +27,7 @@ st.markdown("""
         margin-top: 20px;
         margin-bottom: 20px;
         padding: 40px;
-        max-width: 1000px;
+        max-width: 1100px;
     }
     
     /* CONTENEDOR DEL LOGO Y TITULO */
@@ -43,7 +43,6 @@ st.markdown("""
         margin-bottom: 0px;
     }
 
-    /* TITULO PRINCIPAL MÁS CHICO */
     h1 {
         font-size: 34px !important;
         color: #002e5d !important;
@@ -52,7 +51,6 @@ st.markdown("""
         margin-top: 0px !important;
     }
     
-    /* TITULOS SECUNDARIOS (Secciones) MÁS CHICOS */
     h2 {
         font-size: 24px !important;
         color: #000000 !important;
@@ -76,7 +74,7 @@ st.markdown("""
         box-shadow: 4px 4px 10px rgba(0,0,0,0.8) !important; 
     }
 
-    div.stButton > button:first-child {
+    div.stButton > button:first-child, div.stDownloadButton > button:first-child {
         background-color: #0056b3 !important;
         color: #ffffff !important;
         border-radius: 8px !important;
@@ -88,7 +86,7 @@ st.markdown("""
         width: 100% !important;
         margin-top: 20px !important;
     }
-    div.stButton > button:first-child:active {
+    div.stButton > button:first-child:active, div.stDownloadButton > button:first-child:active {
         transform: translateY(5px) !important;
         box-shadow: 0px 0px 0px #003d82 !important;
     }
@@ -127,13 +125,10 @@ st.markdown("""
         font-size: 15px !important;
     }
     
-    /* ESTILOS PARA LAS SOLAPAS */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 20px;
-    }
+    /* ESTILOS DE SOLAPAS */
+    .stTabs [data-baseweb="tab-list"] { gap: 20px; }
     .stTabs [data-baseweb="tab"] {
         height: 50px;
-        white-space: pre-wrap;
         background-color: #f0f2f6;
         border-radius: 10px 10px 0px 0px;
         padding: 10px 20px;
@@ -142,10 +137,7 @@ st.markdown("""
         border: 2px solid #000000;
         border-bottom: none;
     }
-    .stTabs [aria-selected="true"] {
-        background-color: #0056b3 !important;
-        color: #ffffff !important;
-    }
+    .stTabs [aria-selected="true"] { background-color: #0056b3 !important; color: #ffffff !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -184,14 +176,17 @@ if 'es_argentino' not in st.session_state: st.session_state.es_argentino = True
 
 # --- PANEL ADMIN ---
 st.sidebar.title("🔐 Panel de Control")
-if st.sidebar.text_input("Clave admin:", type="password") == "fcm2026":
-    st.title("📊 Panel Estadístico")
+st.sidebar.text_input("Ingresá la clave de admin:", type="password", key="pwd_input")
+st.session_state.modo_admin = (st.session_state.pwd_input == "fcm2026")
+
+if st.session_state.modo_admin:
+    st.title("📊 Panel Estadístico Clínico (Modo Admin)")
     st.button("⬅️ Volver a la Encuesta", on_click=cerrar_sesion)
+    st.write("---")
     
     df = pd.DataFrame()
     df_hist = pd.DataFrame()
     
-    # Recolección de datos (Google + Local)
     try:
         res = requests.get(f"{URL_DE_TU_GOOGLE_SCRIPT}?sheet=Respuestas").json()
         if res: df = pd.DataFrame(res)
@@ -206,60 +201,137 @@ if st.sidebar.text_input("Clave admin:", type="password") == "fcm2026":
     if df_hist.empty and os.path.isfile('Historial_Movimientos.csv'): df_hist = pd.read_csv('Historial_Movimientos.csv')
 
     if not df.empty:
-        st.metric(label="Total de Encuestas Respondidas", value=len(df))
+        # --- TARJETAS MÉTRICAS 3D FLOTANTES ---
+        col_m1, col_m2, col_m3 = st.columns(3)
         
-        # SOLAPAS
+        # Cálculo Seguro de Cobertura Completa
+        col_esq = [c for c in df.columns if "esquema" in c.lower()]
+        if col_esq:
+            completos = len(df[df[col_esq[0]].astype(str).str.lower().str.contains("si|completo", na=False)])
+            porcentaje_cob = f"{(completos / len(df) * 100):.1f}%"
+        else:
+            porcentaje_cob = "0.0%"
+            
+        # Cálculo Seguro de Confianza Promedio
+        col_conf = [c for c in df.columns if "confianza" in c.lower()]
+        if col_conf:
+            try: num_conf = pd.to_numeric(df[col_conf[0]], errors='coerce').mean()
+            except: num_conf = 0
+            promedio_conf = f"{num_conf:.1f} / 5" if not pd.isna(num_conf) else "N/A"
+        else:
+            promedio_conf = "N/A"
+
+        with col_m1:
+            st.markdown(f"""
+            <div style="background: #FFFFFF; padding: 20px; border-radius: 12px; box-shadow: 4px 4px 12px rgba(0,0,0,0.3); border: 3px solid #000000; text-align: center;">
+                <span style="font-size: 35px;">📋</span>
+                <h4 style="margin: 5px 0; font-size: 15px; color: #000000; font-weight: 700;">TOTAL RESPUESTAS</h4>
+                <p style="margin: 0; font-size: 36px; font-weight: 800; color: #0056b3;">{len(df)}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col_m2:
+            st.markdown(f"""
+            <div style="background: #FFFFFF; padding: 20px; border-radius: 12px; box-shadow: 4px 4px 12px rgba(0,0,0,0.3); border: 3px solid #000000; text-align: center;">
+                <span style="font-size: 35px;">💉</span>
+                <h4 style="margin: 5px 0; font-size: 15px; color: #000000; font-weight: 700;">ESQUEMA COMPLETO</h4>
+                <p style="margin: 0; font-size: 36px; font-weight: 800; color: #2e7d32;">{porcentaje_cob}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col_m3:
+            st.markdown(f"""
+            <div style="background: #FFFFFF; padding: 20px; border-radius: 12px; box-shadow: 4px 4px 12px rgba(0,0,0,0.3); border: 3px solid #000000; text-align: center;">
+                <span style="font-size: 35px;">🛡️</span>
+                <h4 style="margin: 5px 0; font-size: 15px; color: #000000; font-weight: 700;">CONFIANZA PROMEDIO</h4>
+                <p style="margin: 0; font-size: 36px; font-weight: 800; color: #d32f2f;">{promedio_conf}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.write("##")
+
+        # SOLAPAS SEPARADAS DE SEGURIDAD
         solapa_datos, solapa_graficos = st.tabs(["📋 Tablas y Excel", "📊 Gráficos Estadísticos"])
         
         with solapa_datos:
-            st.write("### 📋 Base de Datos en Vivo")
+            st.write("### 🔍 Filtros de Búsqueda Rápida")
+            c_fil1, c_fil2 = st.columns(2)
             
+            col_carrera_opt = [c for c in df.columns if "carrera" in c.lower()]
+            if col_carrera_opt:
+                lista_carreras = ["TODAS"] + list(df[col_carrera_opt[0]].dropna().unique())
+                filtro_carrera = st.selectbox("Filtrar por Carrera:", lista_carreras)
+            else:
+                filtro_carrera = "TODAS"
+                
+            filtro_buscar = st.text_input("Buscar por Nombre o Email del Alumno:").upper()
+            
+            # Aplicación de Filtros en Tiempo Real
+            df_filtrado = df.copy()
+            if col_carrera_opt and filtro_carrera != "TODAS":
+                df_filtrado = df_filtrado[df_filtrado[col_carrera_opt[0]] == filtro_carrera]
+            if filtro_buscar:
+                col_nom = [c for c in df.columns if "nombre" in c.lower()]
+                col_em = [c for c in df.columns if "email" in c.lower() or "mail" in c.lower()]
+                condicion = pd.Series(False, index=df_filtrado.index)
+                if col_nom: condicion = condicion | df_filtrado[col_nom[0]].astype(str).str.upper().str.contains(filtro_buscar)
+                if col_em: condicion = condicion | df_filtrado[col_em[0]].astype(str).str.upper().str.contains(filtro_buscar)
+                df_filtrado = df_filtrado[condicion]
+
+            st.write("---")
             buffer = io.BytesIO()
             with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
                 df.to_excel(writer, sheet_name='Base_Completa', index=False)
                 if not df_hist.empty: df_hist.to_excel(writer, sheet_name='Movimientos', index=False)
-            st.download_button("📥 Descargar Excel Completo", data=buffer.getvalue(), file_name=f"Reporte_FCM_{datetime.now().strftime('%Y%m%d')}.xlsx")
+            st.download_button("📥 Descargar Excel de Diagnósticos", data=buffer.getvalue(), file_name=f"Reporte_FCM_{datetime.now().strftime('%Y%m%d')}.xlsx")
             
-            st.dataframe(df)
+            st.dataframe(df_filtrado)
             
             if not df_hist.empty:
-                st.write("### 👣 Historial de Navegación")
+                st.write("### 👣 Historial de Movimientos Generales")
                 st.dataframe(df_hist)
 
         with solapa_graficos:
-            st.write("### 📊 Análisis Visual")
-            col_torta, col_barra = st.columns(2)
+            st.write("### 📊 Análisis Visual Demográfico y Sanitario")
+            col_g1, col_g2 = st.columns(2)
             
-            with col_torta:
-                # Buscador inteligente de columna Sexo (ignora mayúsculas/minúsculas)
+            with col_g1:
                 col_sexo = [c for c in df.columns if "sex" in c.lower()]
                 if col_sexo:
-                    nombre_col = col_sexo[0]
-                    df_sexo = df[nombre_col].fillna("Sin especificar").value_counts().reset_index()
-                    df_sexo.columns = [nombre_col, "Cantidad"]
-                    fig_sexo = px.pie(df_sexo, names=nombre_col, values="Cantidad", title="Participación por Sexo", hole=0.3, color_discrete_sequence=px.colors.qualitative.Pastel)
+                    df_sexo = df[col_sexo[0]].fillna("Sin especificar").value_counts().reset_index()
+                    df_sexo.columns = [col_sexo[0], "Cantidad"]
+                    fig_sexo = px.pie(df_sexo, names=col_sexo[0], values="Cantidad", title="Participación por Sexo", hole=0.3, color_discrete_sequence=px.colors.qualitative.Pastel)
                     fig_sexo.update_traces(textposition='inside', textinfo='percent+label')
                     st.plotly_chart(fig_sexo, use_container_width=True)
-                else:
-                    st.info("ℹ️ No hay datos de 'Sexo' en estas respuestas para generar el gráfico.")
             
-            with col_barra:
-                # Buscador inteligente de columna Edad
+            with col_g2:
                 col_edad = [c for c in df.columns if "edad" in c.lower()]
                 if col_edad:
-                    nombre_col = col_edad[0]
-                    df_edad = df[nombre_col].fillna("Sin especificar").value_counts().reset_index()
-                    df_edad.columns = [nombre_col, "Cantidad"]
-                    fig_edad = px.bar(df_edad, x=nombre_col, y="Cantidad", title="Distribución por Edades", text_auto=True, color=nombre_col)
+                    df_edad = df[col_edad[0]].fillna("Sin especificar").value_counts().reset_index()
+                    df_edad.columns = [col_edad[0], "Cantidad"]
+                    fig_edad = px.bar(df_edad, x=col_edad[0], y="Cantidad", title="Distribución por Edades", text_auto=True, color=col_edad[0])
                     st.plotly_chart(fig_edad, use_container_width=True)
-                else:
-                    st.info("ℹ️ No hay datos de 'Edad' en estas respuestas para generar el gráfico.")
-                    
+            
+            col_g3, col_g4 = st.columns(2)
+            with col_g3:
+                if col_esq:
+                    df_esq = df[col_esq[0]].fillna("Sin especificar").value_counts().reset_index()
+                    df_esq.columns = [col_esq[0], "Cantidad"]
+                    fig_esq = px.pie(df_esq, names=col_esq[0], values="Cantidad", title="Estado de Avance del Esquema", hole=0.3, color_discrete_sequence=px.colors.qualitative.Safe)
+                    fig_esq.update_traces(textposition='inside', textinfo='percent+label')
+                    st.plotly_chart(fig_esq, use_container_width=True)
+            
+            with col_g4:
+                if col_carrera_opt:
+                    df_car = df[col_carrera_opt[0]].fillna("Sin especificar").value_counts().reset_index()
+                    df_car.columns = [col_carrera_opt[0], "Cantidad"]
+                    fig_car = px.bar(df_car, x=col_carrera_opt[0], y="Cantidad", title="Afluencia por Especialidad / Carrera", text_auto=True, color=col_carrera_opt[0])
+                    st.plotly_chart(fig_car, use_container_width=True)
     else:
         st.warning("Aún no hay respuestas guardadas en el sistema para procesar.")
 
 else:
-    # --- MODO ALUMNO ---
+    # --- MODO ALUMNO (ENCUESTA DEFINITIVA) ---
     st.markdown("""
         <div class="header-container">
             <div class="main-logo">🏥💉</div>
@@ -291,14 +363,30 @@ else:
                 st.rerun()
 
     elif st.session_state.seccion == 2:
-        st.header("SECCIÓN 2 - CONOCIMIENTOS")
-        cal = st.radio("¿Conoces el Calendario Nacional? *", ["Si", "No", "Parcialmente"], index=None)
-        medios = st.multiselect("¿Por qué medios recibes información? *", ["Escuela", "Universidad", "Familia", "Redes sociales", "Campañas de salud", "Otros"])
-        esquema = st.radio("¿Tienes el esquema completo? *", ["Si", "No", "No sé"], index=None)
-        libreta = st.radio("¿Tienes libreta o registro? *", ["Físico", "Digital", "No", "No sé"], index=None)
-        vacs = st.multiselect("Vacunas que te has colocado *", ["BCG", "Neumococo", "Hepatitis A", "Varicela", "HPV", "Hepatitis B", "Doble adulto (Antitetánica)", "Antigripal"])
-        lugares = st.multiselect("¿Dónde te vacunas habitualmente? *", ["Hospitales Públicos", "Hospitales Privados", "Cesac", "Otros"])
+        st.header("SECCIÓN 2 - CONOCIMIENTOS SOBRE LA VACUNACIÓN EN ARGENTINA")
+        cal = st.radio("¿Conoces el Calendario Nacional de Vacunación argentino? *", ["Si", "No", "Parcialmente"], index=None)
+        medios = st.multiselect("¿Por qué medios recibes información sobre vacunación? *", ["Escuela", "Colegio", "Universidad", "Familia", "Redes sociales", "Campañas de salud", "No recibí información", "Otros"])
+        medios_final = medios.copy()
+        if "Otros" in medios:
+            otro_medio = st.text_input("Especificá por qué otro medio:").upper()
+            if otro_medio:
+                medios_final.remove("Otros")
+                medios_final.append(otro_medio)
+
+        esquema = st.radio("¿Tienes el esquema de vacunación completo? *", ["Si", "No", "No sé"], index=None)
+        libreta = st.radio("¿Tienes libreta, carnet o registro de vacunación? *", ["Sí, en formato físico", "Sí, en formato digital", "No", "No sé dónde está"], index=None)
+        vacs = st.multiselect("Selecciona las vacunas que te has colocado *", ["BCG", "Neumococo", "Hepatitis A", "Varicela", "HPV", "Hepatitis B", "Doble adulto (Antitetánica)", "Antigripal"])
+        lugares = st.multiselect("¿En qué lugares te vacunas habitualmente? *", ["Hospitales Públicos", "Hospitales Privados", "Cesac", "Otros"])
+        lugares_final = lugares.copy()
+        if "Otros" in lugares:
+            otro_lugar = st.text_input("Especificá qué otro lugar:").upper()
+            if otro_lugar:
+                lugares_final.remove("Otros")
+                lugares_final.append(otro_lugar)
         pago = st.radio("¿Tuviste que pagar alguna vacuna? *", ["Si", "No", "Otros"], index=None)
+        pago_final = pago
+        if pago == "Otros:":
+            pago_final = st.text_input("Especificá qué vacuna o situación:").upper()
 
         col1, col2 = st.columns(2)
         with col1:
@@ -310,18 +398,21 @@ else:
                 if None in [cal, esquema, libreta, pago] or not medios or not vacs or not lugares:
                     st.error("⚠️ Completá todas las opciones.")
                 else:
-                    st.session_state.respuestas.update({"Conoce_Calendario": cal, "Esquema_Completo": esquema, "Vacunas": ", ".join(vacs)})
+                    st.session_state.respuestas.update({
+                        "Conoce_Calendario": cal, "Medios_Info": ", ".join(medios_final), "Esquema_Completo": esquema, 
+                        "Libreta": libreta, "Vacunas": ", ".join(vacs), "Lugares_Vacunacion": ", ".join(lugares_final), "Pago_Vacuna": pago_final
+                    })
                     registrar_movimiento_doble("Sección 2", "Avanzó a Sección 3")
                     st.session_state.seccion = 3
                     st.rerun()
 
     elif st.session_state.seccion == 3:
-        st.header("SECCIÓN 3 - OBLIGATORIAS FCM")
-        req = st.radio("¿Conoces las vacunas requeridas por FCM? *", ["Si", "No", "Parcialmente"], index=None)
-        info_facu = st.radio("¿Recibiste info de la facultad? *", ["Si", "No", "No recuerdo"], index=None)
+        st.header("SECCIÓN 3 - VACUNACIÓN OBLIGATORIA EN LA FACULTAD DE CIENCIAS MÉDICAS")
+        req = st.radio("¿Conoces cuáles son las vacunas requeridas por la Facultad de Ciencias Médicas para realizar prácticas hospitalarias? *", ["Si", "No", "Parcialmente"], index=None)
+        info_facu = st.radio("¿Recibiste información por parte de la facultad sobre las vacunas requeridas? *", ["Si", "No", "No recuerdo"], index=None)
         ya_colocadas = st.radio("¿Ya te colocaste las vacunas obligatorias? *", ["Si", "No"], index=None)
-        t_anti = st.radio("¿Hace cuánto te diste la Antitetánica? *", ["Hace menos de 10 años", "Hace más de 10 años", "No recuerdo"], index=None)
-        m_hepb = st.radio("¿Momento de vacuna Hepatitis B? *", ["Según calendario de vacunación (3 dosis)", "De adulto"], index=None)
+        t_anti = st.radio("¿Hace cuánto tiempo te colocaste la vacuna Doble adulto (antitetánica)? *", ["Hace menos de 10 años", "Hace más de 10 años", "No recuerdo"], index=None)
+        m_hepb = st.radio("¿En qué momento te colocaste la vacuna de la Hepatitis B? *", ["Según calendario de vacunación (3 dosis)", "De adulto"], index=None)
         s_hepb = st.radio("¿Te hiciste la serología de la Hepatitis B? *", ["Si", "No"], index=None)
         antigripal = st.radio("¿Te colocaste la vacuna Antigripal este año? *", ["Si", "No"], index=None)
         anual = st.radio("¿Te vacunas todos los años contra la gripe? *", ["Si", "No", "Algunos"], index=None)
@@ -342,13 +433,13 @@ else:
                     st.rerun()
 
     elif st.session_state.seccion == 4:
-        st.header("SECCIÓN 4 - CRITERIOS")
-        motivo = st.radio("¿Te vacunaste por obligación o decisión propia? *", ["Obligación", "Consideración propia"], index=None)
-        recom = st.radio("¿Recomendarías vacunarse? *", ["Si", "No"], index=None)
+        st.header("SECCIÓN 4 - CRITERIOS SOBRE LA VACUNACIÓN")
+        motivo = st.radio("¿Te vacunaste para poder cumplir con un requisito o por consideración propia? *", ["Obligación", "Consideración propia"], index=None)
+        recom = st.radio("¿Recomendarías vacunarse a tus amigos y familiares? *", ["Si", "No"], index=None)
         st.write("¿Qué tan necesarias consideras las vacunas? (0 Innecesario - 10 Muy necesario) *")
         necesarias = st.select_slider("", options=list(range(11)), value=5)
-        prev = st.radio("¿Consideras las vacunas como método preventivo? *", ["Si", "No"], index=None)
-        st.write("¿Nivel de confianza en las vacunas? (1 Ninguna - 5 Total) *")
+        prev = st.radio("¿Consideras la aplicación de vacunas como método preventivo de complicación de enfermedades? *", ["Si", "No"], index=None)
+        st.write("¿Qué tanto confías en la seguridad y eficacia de las vacunas? (1 Ninguna - 5 Total) *")
         confianza = st.select_slider(" ", options=[1,2,3,4,5], value=3)
 
         col1, col2 = st.columns(2)
@@ -371,10 +462,10 @@ else:
                     st.rerun()
 
     elif st.session_state.seccion == 5:
-        st.header("SECCIÓN 5 - EXTRANJEROS")
-        carnet_ext = st.radio("¿Cuentas con registro de tu país de origen? *", ["Si", "No", "No lo sé", "Hice mi esquema en Argentina"], index=None)
-        conocia_arg = st.radio("¿Conocías las vacunas obligatorias de Argentina antes de venir? *", ["Si", "No", "Hice mi esquema en Argentina"], index=None)
-        facu_solicito = st.radio("¿La facultad te solicitó documentación? *", ["Si", "No", "No recuerdo", "Hice mi esquema en Argentina"], index=None)
+        st.header("SECCIÓN 5 - EXTRANJEROS / PERSONAS QUE HICIERON SU ESQUEMA FUERA DEL PAÍS")
+        carnet_ext = st.radio("¿Cuentas con un registro, libreta o carnet de vacunación de tu país de procedencia? *", ["Si", "No", "No lo sé", "Hice mi esquema en Argentina"], index=None)
+        conocia_arg = st.radio("Antes del ingreso al país, ¿conocías las vacunas obligatorias en Argentina? *", ["Si", "No", "Hice mi esquema en Argentina"], index=None)
+        facu_solicito = st.radio("¿La facultad te solicitó documentación sobre vacunación? *", ["Si", "No", "No recuerdo", "Hice mi esquema en Argentina"], index=None)
 
         col1, col2 = st.columns(2)
         with col1:
@@ -393,12 +484,13 @@ else:
 
     elif st.session_state.seccion == 6:
         st.header("SECCIÓN 6 - INFORMACIÓN")
-        mas_info = st.radio("¿Deseas obtener más información sobre vacunación? *", ["Sí", "No"], index=None)
+        mas_info = st.radio("¿Deseas obtener más información sobre vacunación, esquemas y puntos de atención? *", ["Sí", "No"], index=None)
 
         col1, col2 = st.columns(2)
         with col1:
             if st.button("⬅️ Atrás"):
-                st.session_state.seccion = 4 if st.session_state.es_argentino else 5
+                if st.session_state.es_argentino: st.session_state.seccion = 4
+                else: st.session_state.seccion = 5
                 st.rerun()
         with col2:
             if st.button("Finalizar Encuesta ✅"):
