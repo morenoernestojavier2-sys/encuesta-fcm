@@ -210,13 +210,11 @@ if st.session_state.modo_admin:
     if df_hist.empty and os.path.isfile('Historial_Movimientos.csv'): df_hist = pd.read_csv('Historial_Movimientos.csv')
 
     if not df.empty:
-        # --- TARJETAS MÉTRICAS 3D FLOTANTES (Con blindaje anti-nulos) ---
+        # --- TARJETAS MÉTRICAS 3D FLOTANTES ---
         col_m1, col_m2, col_m3 = st.columns(3)
         
-        # Blindaje Cobertura
-        col_esq = [c for c in df.columns if "esquema" in c.lower()]
-        if col_esq:
-            s_esq = df[col_esq[0]].astype(str).str.lower()
+        if "Esquema_Completo" in df.columns:
+            s_esq = df["Esquema_Completo"].astype(str).str.lower()
             validos_esq = s_esq[s_esq != 'nan']
             if len(validos_esq) > 0:
                 completos = len(validos_esq[validos_esq.str.contains("si|completo", na=False)])
@@ -224,10 +222,8 @@ if st.session_state.modo_admin:
             else: porcentaje_cob = "Sin datos"
         else: porcentaje_cob = "Sin datos"
             
-        # Blindaje Confianza
-        col_conf = [c for c in df.columns if "confianza" in c.lower()]
-        if col_conf:
-            s_conf = pd.to_numeric(df[col_conf[0]], errors='coerce')
+        if "Nivel_Confianza" in df.columns:
+            s_conf = pd.to_numeric(df["Nivel_Confianza"], errors='coerce')
             if s_conf.notna().any():
                 num_conf = s_conf.mean()
                 promedio_conf = f"{num_conf:.1f} / 5"
@@ -263,16 +259,14 @@ if st.session_state.modo_admin:
 
         st.write("##")
 
-        # SOLAPAS
-        solapa_datos, solapa_graficos = st.tabs(["📋 Tablas y Excel", "📊 Gráficos Estadísticos"])
+        # --- TRES SOLAPAS SEPARADAS DE SEGURIDAD ---
+        solapa_datos, solapa_graficos, solapa_diario = st.tabs(["📋 Tablas y Excel", "📊 Gráficos Generales", "📈 Evolución por Día"])
         
         with solapa_datos:
             st.write("### 🔍 Filtros de Búsqueda Rápida")
-            c_fil1, c_fil2 = st.columns(2)
             
-            col_carrera_opt = [c for c in df.columns if "carrera" in c.lower()]
-            if col_carrera_opt:
-                lista_carreras = ["TODAS"] + list(df[col_carrera_opt[0]].dropna().unique())
+            if "Carrera" in df.columns:
+                lista_carreras = ["TODAS"] + list(df["Carrera"].dropna().unique())
                 filtro_carrera = st.selectbox("Filtrar por Carrera:", lista_carreras)
             else:
                 filtro_carrera = "TODAS"
@@ -280,14 +274,13 @@ if st.session_state.modo_admin:
             filtro_buscar = st.text_input("Buscar por Email del Alumno:").upper()
             
             df_filtrado = df.copy()
-            if col_carrera_opt and filtro_carrera != "TODAS":
-                df_filtrado = df_filtrado[df_filtrado[col_carrera_opt[0]] == filtro_carrera]
+            if "Carrera" in df.columns and filtro_carrera != "TODAS":
+                df_filtrado = df_filtrado[df_filtrado["Carrera"] == filtro_carrera]
+            
             if filtro_buscar:
-                col_nom = [c for c in df.columns if "nombre" in c.lower()]
-                col_em = [c for c in df.columns if "email" in c.lower() or "mail" in c.lower()]
                 condicion = pd.Series(False, index=df_filtrado.index)
-                if col_nom: condicion = condicion | df_filtrado[col_nom[0]].astype(str).str.upper().str.contains(filtro_buscar)
-                if col_em: condicion = condicion | df_filtrado[col_em[0]].astype(str).str.upper().str.contains(filtro_buscar)
+                if "Nombre" in df.columns: condicion = condicion | df_filtrado["Nombre"].astype(str).str.upper().str.contains(filtro_buscar)
+                if "Email" in df.columns: condicion = condicion | df_filtrado["Email"].astype(str).str.upper().str.contains(filtro_buscar)
                 df_filtrado = df_filtrado[condicion]
 
             st.write("---")
@@ -306,12 +299,10 @@ if st.session_state.modo_admin:
         with solapa_graficos:
             st.write("### 📊 Análisis Visual Demográfico y Sanitario")
             
-            # --- FUNCION INTERNA PARA GRÁFICOS BLINDADOS ---
             def crear_grafico(df_fuente, keyword, tipo, titulo):
                 cols = [c for c in df_fuente.columns if keyword.lower() in str(c).lower()]
                 if cols:
                     nombre = cols[0]
-                    # Limpieza maestra de datos nulos y vacíos
                     serie_limpia = df_fuente[nombre].astype(str).replace(['', 'nan', 'None', 'NaN', '<NA>'], 'Sin especificar')
                     df_plot = serie_limpia.value_counts().reset_index()
                     df_plot.columns = [nombre, "Cantidad"]
@@ -325,12 +316,9 @@ if st.session_state.modo_admin:
                                 fig = px.bar(df_plot, x=nombre, y="Cantidad", title=titulo, text_auto=True, color=nombre)
                             st.plotly_chart(fig, use_container_width=True)
                             return
-                        except Exception as e:
-                            st.error(f"Error técnico al dibujar {titulo}.")
-                            return
+                        except: return
                 st.info(f"ℹ️ Aún no hay datos suficientes de '{keyword}' para el gráfico: {titulo}")
 
-            # Dibujamos de forma segura
             col_g1, col_g2 = st.columns(2)
             with col_g1: crear_grafico(df, "sex", "torta", "Participación por Sexo")
             with col_g2: crear_grafico(df, "edad", "barra", "Distribución por Edades")
@@ -338,6 +326,26 @@ if st.session_state.modo_admin:
             col_g3, col_g4 = st.columns(2)
             with col_g3: crear_grafico(df, "esquema", "torta", "Estado de Avance del Esquema")
             with col_g4: crear_grafico(df, "carrera", "barra", "Afluencia por Especialidad / Carrera")
+
+        with solapa_diario:
+            st.write("### 📈 Reporte de Respuestas por Día")
+            if "Fecha" in df.columns:
+                df_fecha = df.copy()
+                df_fecha["Fecha_DT"] = pd.to_datetime(df_fecha["Fecha"], errors='coerce')
+                df_fecha["Día"] = df_fecha["Fecha_DT"].dt.date
+                
+                df_diario = df_fecha.dropna(subset=["Fecha_DT"])["Día"].value_counts().reset_index()
+                df_diario.columns = ["Día", "Cantidad"]
+                df_diario = df_diario.sort_values(by="Día") 
+                
+                if not df_diario.empty:
+                    fig_diario = px.line(df_diario, x="Día", y="Cantidad", title="Cantidad de Encuestas Recibidas por Día", markers=True, text="Cantidad")
+                    fig_diario.update_traces(textposition="top center", line=dict(color="#0056b3", width=4))
+                    st.plotly_chart(fig_diario, use_container_width=True)
+                else:
+                    st.info("ℹ️ Esperando fechas de respuestas válidas para graficar el avance diario.")
+            else:
+                st.info("ℹ️ Columna de Fecha no detectada aún en las respuestas.")
 
     else:
         st.warning("Aún no hay respuestas guardadas en el sistema para procesar.")
@@ -356,7 +364,7 @@ else:
         """, height=0)
         st.session_state.seccion_anterior = st.session_state.seccion
 
-    # --- MODO ALUMNO (ENCUESTA DEFINITIVA) ---
+    # --- MODO ALUMNO ---
     st.markdown("""
         <div class="header-container">
             <div class="main-logo">🏥💉</div>
@@ -389,7 +397,7 @@ else:
     elif st.session_state.seccion == 2:
         st.header("SECCIÓN 2 - CONOCIMIENTOS SOBRE LA VACUNACIÓN EN ARGENTINA")
         cal = st.radio("¿Conoces el Calendario Nacional de Vacunación argentino? *", ["Si", "No", "Parcialmente"], index=None)
-        medios = st.multiselect("¿Por qué medios recibes información sobre vacunación? *", ["Escuela", "Colegio", "Universidad", "Familia", "Redes sociales", "Campañas de salud", "No recibí información", "Otros"])
+        medios = st.multiselect("¿Por qué medios recibes información sobre vacunación? *", ["Escuela", "Colegio", "Universidad", "Familia", "Redes sociales", "Campañas de salud (por ejemplo, centros de salud, propagandas, puntos saludables, etc)", "No recibí información", "Otros"])
         medios_final = medios.copy()
         if "Otros" in medios:
             otro_medio = st.text_input("Especificá por qué otro medio:").upper()
@@ -436,7 +444,7 @@ else:
         info_facu = st.radio("¿Recibiste información por parte de la facultad sobre las vacunas requeridas? *", ["Si", "No", "No recuerdo"], index=None)
         ya_colocadas = st.radio("¿Ya te colocaste las vacunas obligatorias? *", ["Si", "No"], index=None)
         t_anti = st.radio("¿Hace cuánto tiempo te colocaste la vacuna Doble adulto (antitetánica)? *", ["Hace menos de 10 años", "Hace más de 10 años", "No recuerdo"], index=None)
-        m_hepb = st.radio("¿En qué momento te colocaste la vacuna de la Hepatitis B? *", ["Según calendario de vacunación (3 dosis)", "De adulto"], index=None)
+        m_hepb = st.radio("¿En qué momento te colocaste la vacuna de la Hepatitis B? *", ["Según calendario de vacunación (3 dosis - 0, 1 y 6 meses de vida)", "De adulto"], index=None)
         s_hepb = st.radio("¿Te hiciste la serología de la Hepatitis B? *", ["Si", "No"], index=None)
         antigripal = st.radio("¿Te colocaste la vacuna Antigripal este año? *", ["Si", "No"], index=None)
         anual = st.radio("¿Te vacunas todos los años contra la gripe? *", ["Si", "No", "Algunos"], index=None)
