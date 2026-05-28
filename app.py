@@ -20,7 +20,7 @@ def obtener_fecha_archivo():
 URL_DE_TU_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbyoYN3-nC8mhJWiNE14_tEcTjqPlh2q0R10Cy3ucE97DmtRmkLQfWlGcTT93EmWnfn7/exec"
 st.set_page_config(page_title="Encuesta de Vacunación", page_icon="🏥", layout="wide")
 
-# --- DISEÑO VISUAL ---
+# --- DISEÑO VISUAL PREMIUM ---
 st.markdown("""
 <style>
     .stApp {
@@ -41,7 +41,7 @@ st.markdown("""
     }
     .header-container { text-align: center; margin-bottom: 20px; padding: 10px; border-bottom: 2px solid #0056b3; }
     .main-logo { font-size: 70px; margin-bottom: 0px; }
-    h1 { font-size: 34px !important; color: #002e5d !important; font-weight: 800 !important; text-shadow: 1px 1px 2px #FFFFFF !important; }
+    h1 { font-size: 34px !important; color: #002e5d !important; font-weight: 800 !important; text-shadow: 1px 1px 2px #FFFFFF !important; margin-top: 0px !important; }
     h2 { font-size: 24px !important; color: #000000 !important; font-weight: 700 !important; text-shadow: 1px 1px 2px #FFFFFF !important; margin-bottom: 15px !important; }
     .stTextInput label, .stSelectbox label, .stRadio label, .stMultiselect label, .stSlider label, h3, h4, .stMetric label { color: #000000 !important; font-weight: 700 !important; text-shadow: 1px 1px 2px #FFFFFF !important; }
     .stTextInput input, .stSelectbox div[role="button"], .stRadio div[role="radiogroup"], .stMultiselect div[role="listbox"], .stSlider div[role="slider"] { border: 3px solid #000000 !important; border-radius: 8px !important; background-color: #FFFFFF !important; color: #000000 !important; opacity: 1.0 !important; box-shadow: 4px 4px 10px rgba(0,0,0,0.8) !important; }
@@ -85,6 +85,9 @@ def cerrar_sesion():
     st.session_state.modo_admin = False
     st.session_state.pwd_input = ""
 
+def aplicar_cebra(row):
+    return ['background-color: #E6F2FF' if row.name % 2 == 0 else 'background-color: #FFFFFF' for _ in row]
+
 # --- MEMORIA DE SESIÓN ---
 if 'seccion' not in st.session_state: st.session_state.seccion = 1
 if 'seccion_anterior' not in st.session_state: st.session_state.seccion_anterior = 1
@@ -100,12 +103,55 @@ st.session_state.modo_admin = (st.session_state.pwd_input == "fcm2026")
 if st.session_state.modo_admin:
     st.title("📊 Panel Estadístico Clínico (Modo Admin)")
     
-    col_btn1, col_btn2 = st.columns(2)
+    col_btn1, col_btn2, col_btn3, col_btn4 = st.columns(4)
     with col_btn1:
-        st.button("⬅️ Volver a la Encuesta", on_click=cerrar_sesion, use_container_width=True)
+        st.button("⬅️ Volver", on_click=cerrar_sesion, use_container_width=True)
     with col_btn2:
-        if st.button("🔄 Actualizar Datos en Vivo", use_container_width=True):
+        if st.button("🔄 Actualizar Datos", use_container_width=True):
             st.rerun()
+    with col_btn3:
+        if st.button("🗑️ Borrar Pruebas", use_container_width=True):
+            if os.path.exists('Base_Respuestas.csv'): os.remove('Base_Respuestas.csv')
+            if os.path.exists('Historial_Movimientos.csv'): os.remove('Historial_Movimientos.csv')
+            st.success("✅ Archivos locales borrados.")
+    with col_btn4:
+        if st.button("🧪 Enviar Prueba (Test)", use_container_width=True):
+            datos_prueba = {
+                "Fecha": obtener_hora_arg(),
+                "Email": "ALUMNO.PRUEBA@TEST.COM",
+                "Edad": "26 a 35 años",
+                "Sexo": "Femenino",
+                "Nacionalidad": "ARGENTINA",
+                "Carrera": "Medicina",
+                "Anio": "1er año",
+                "Conoce_Calendario": "Si",
+                "Medios_Info": "Universidad",
+                "Esquema_Completo": "No",
+                "Libreta": "Sí, en formato digital",
+                "Vacunas": "Hepatitis B, BCG",
+                "Lugares_Vacunacion": "Hospitales Públicos",
+                "Pago_Vacuna": "No",
+                "Conoce_Requeridas": "Si",
+                "Info_Facultad": "Si",
+                "Vacunas_Obligatorias_Colocadas": "No",
+                "Tiempo_Antitetanica": "Hace más de 10 años",
+                "Momento_HepB": "De adulto",
+                "Serologia_HepB": "Si",
+                "Antigripal_Este_Anio": "No",
+                "Gripe_Anual": "No",
+                "Motivo_Vacunacion": "Obligación",
+                "Recomendaria": "Si",
+                "Nivel_Necesidad": 10,
+                "Metodo_Preventivo": "Si",
+                "Nivel_Confianza": 5,
+                "Carnet_Exterior": "No aplica",
+                "Conocia_Obligatorias_Arg": "No aplica",
+                "Facultad_Solicito_Doc": "No aplica",
+                "Desea_Mas_Info": "Sí",
+                "Vacunas_Faltantes": "Antitetánica, Antigripal"
+            }
+            guardar_respuesta_doble(datos_prueba)
+            st.success("✅ ¡Datos enviados al Excel! Hacé clic en 'Actualizar Datos' para verlos.")
             
     st.write("---")
     
@@ -194,7 +240,6 @@ if st.session_state.modo_admin:
                 if "Email" in df.columns: condicion = condicion | df_filtrado["Email"].astype(str).str.upper().str.contains(filtro_buscar)
                 df_filtrado = df_filtrado[condicion]
 
-            # --- ORGANIZADOR INTELIGENTE DE COLUMNAS ---
             columnas_prioridad = ["Fecha", "Email", "Carrera", "Esquema_Completo", "Vacunas_Faltantes"]
             cols_ordenadas = [c for c in columnas_prioridad if c in df_filtrado.columns] + [c for c in df_filtrado.columns if c not in columnas_prioridad and c != "Nombre"]
             df_filtrado = df_filtrado[cols_ordenadas]
@@ -206,11 +251,11 @@ if st.session_state.modo_admin:
                 if not df_hist.empty: df_hist.to_excel(writer, sheet_name='Movimientos', index=False)
             st.download_button("📥 Descargar Excel de Diagnósticos", data=buffer.getvalue(), file_name=f"Reporte_FCM_{obtener_fecha_archivo()}.xlsx")
             
-            st.dataframe(df_filtrado)
+            st.dataframe(df_filtrado.style.apply(aplicar_cebra, axis=1), use_container_width=True)
             
             if not df_hist.empty:
                 st.write("### 👣 Historial de Movimientos Generales")
-                st.dataframe(df_hist)
+                st.dataframe(df_hist.style.apply(aplicar_cebra, axis=1), use_container_width=True)
 
         with solapa_graficos:
             st.write("### 📊 Análisis Visual Demográfico y Sanitario")
