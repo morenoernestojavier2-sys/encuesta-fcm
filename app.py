@@ -139,9 +139,7 @@ if st.session_state.modo_admin:
             
         if "Nivel_Confianza" in df.columns:
             s_conf = pd.to_numeric(df["Nivel_Confianza"], errors='coerce')
-            if s_conf.notna().any():
-                num_conf = s_conf.mean()
-                promedio_conf = f"{num_conf:.1f} / 5"
+            if s_conf.notna().any(): promedio_conf = f"{s_conf.mean():.1f} / 5"
             else: promedio_conf = "Sin datos"
         else: promedio_conf = "Sin datos"
 
@@ -195,6 +193,11 @@ if st.session_state.modo_admin:
                 condicion = pd.Series(False, index=df_filtrado.index)
                 if "Email" in df.columns: condicion = condicion | df_filtrado["Email"].astype(str).str.upper().str.contains(filtro_buscar)
                 df_filtrado = df_filtrado[condicion]
+
+            # --- ORGANIZADOR INTELIGENTE DE COLUMNAS ---
+            columnas_prioridad = ["Fecha", "Email", "Carrera", "Esquema_Completo", "Vacunas_Faltantes"]
+            cols_ordenadas = [c for c in columnas_prioridad if c in df_filtrado.columns] + [c for c in df_filtrado.columns if c not in columnas_prioridad and c != "Nombre"]
+            df_filtrado = df_filtrado[cols_ordenadas]
 
             st.write("---")
             buffer = io.BytesIO()
