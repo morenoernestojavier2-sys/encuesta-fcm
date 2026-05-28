@@ -20,6 +20,21 @@ def obtener_fecha_archivo():
 URL_DE_TU_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbyoYN3-nC8mhJWiNE14_tEcTjqPlh2q0R10Cy3ucE97DmtRmkLQfWlGcTT93EmWnfn7/exec"
 st.set_page_config(page_title="Encuesta de Vacunación", page_icon="🏥", layout="wide")
 
+# --- MOTOR DE AUTO-SCROLL OBLIGATORIO ---
+# Esto fuerza a la página a subir arriba de todo en cada recarga
+components.html("""
+    <script>
+        var parent = window.parent;
+        if(parent) {
+            parent.scrollTo(0, 0);
+            var main = parent.document.querySelector('.main');
+            if(main) { main.scrollTo(0, 0); }
+            var app = parent.document.querySelector('.stApp');
+            if(app) { app.scrollTo(0, 0); }
+        }
+    </script>
+""", height=0)
+
 # --- DISEÑO VISUAL PREMIUM ---
 st.markdown("""
 <style>
@@ -43,8 +58,8 @@ st.markdown("""
     .main-logo { font-size: 70px; margin-bottom: 0px; }
     h1 { font-size: 34px !important; color: #002e5d !important; font-weight: 800 !important; text-shadow: 1px 1px 2px #FFFFFF !important; margin-top: 0px !important; }
     h2 { font-size: 24px !important; color: #000000 !important; font-weight: 700 !important; text-shadow: 1px 1px 2px #FFFFFF !important; margin-bottom: 15px !important; }
-    .stTextInput label, .stSelectbox label, .stRadio label, .stMultiselect label, .stSlider label, h3, h4, .stMetric label { color: #000000 !important; font-weight: 700 !important; text-shadow: 1px 1px 2px #FFFFFF !important; }
-    .stTextInput input, .stSelectbox div[role="button"], .stRadio div[role="radiogroup"], .stMultiselect div[role="listbox"], .stSlider div[role="slider"] { border: 3px solid #000000 !important; border-radius: 8px !important; background-color: #FFFFFF !important; color: #000000 !important; opacity: 1.0 !important; box-shadow: 4px 4px 10px rgba(0,0,0,0.8) !important; }
+    .stTextInput label, .stSelectbox label, .stRadio label, .stMultiselect label, .stSlider label, h3, h4, .stMetric label { color: #000000 !important; font-weight: 700 !important; text-shadow: 1px 1px 2px #FFFFFF !important; text-transform: uppercase !important; }
+    .stTextInput input, .stSelectbox div[role="button"], .stRadio div[role="radiogroup"], .stMultiselect div[role="listbox"], .stSlider div[role="slider"] { border: 3px solid #000000 !important; border-radius: 8px !important; background-color: #FFFFFF !important; color: #000000 !important; opacity: 1.0 !important; box-shadow: 4px 4px 10px rgba(0,0,0,0.8) !important; text-transform: uppercase !important; }
     div.stButton > button:first-child, div.stDownloadButton > button:first-child { background-color: #0056b3 !important; color: #ffffff !important; border-radius: 8px !important; border: 3px solid #000000 !important; box-shadow: 5px 5px 15px rgba(0,0,0,0.8) !important; padding: 12px 24px !important; font-weight: bold !important; font-size: 18px !important; width: 100% !important; margin-top: 20px !important; }
     div.stButton > button:first-child:active, div.stDownloadButton > button:first-child:active { transform: translateY(5px) !important; box-shadow: 0px 0px 0px #003d82 !important; }
     .carnet-oficial { background-color: #FFFFFF !important; border-radius: 12px !important; box-shadow: 0 8px 16px rgba(0,0,0,0.3) !important; border: 4px solid #000000 !important; overflow: hidden !important; margin-bottom: 25px !important; font-family: 'Arial', sans-serif !important; opacity: 1.0 !important; }
@@ -90,6 +105,7 @@ def aplicar_cebra(row):
 
 # --- MEMORIA DE SESIÓN ---
 if 'seccion' not in st.session_state: st.session_state.seccion = 1
+if 'respuesta_guardada' not in st.session_state: st.session_state.respuesta_guardada = False
 if 'respuestas' not in st.session_state: st.session_state.respuestas = {}
 if 'es_argentino' not in st.session_state: st.session_state.es_argentino = True
 
@@ -111,7 +127,7 @@ if st.session_state.modo_admin:
         if st.button("🗑️ Borrar Pruebas", use_container_width=True):
             if os.path.exists('Base_Respuestas.csv'): os.remove('Base_Respuestas.csv')
             if os.path.exists('Historial_Movimientos.csv'): os.remove('Historial_Movimientos.csv')
-            st.success("✅ Archivos locales borrados.")
+            st.success("✅ Sistema local limpio. ¡Recordá borrar la fila 1 de tu Google Drive!")
     with col_btn4:
         if st.button("🧪 Enviar Prueba", use_container_width=True):
             datos_prueba = {
@@ -149,7 +165,7 @@ if st.session_state.modo_admin:
                 "Vacunas_Faltantes": "Doble adulto (Antitetánica), Antigripal"
             }
             guardar_respuesta_doble(datos_prueba)
-            st.success("✅ ¡Prueba enviada! Apretá 'Actualizar Datos' para verla.")
+            st.success("✅ ¡Datos enviados al Excel! Apretá 'Actualizar Datos' para verlos.")
             
     st.write("---")
     
@@ -245,7 +261,7 @@ if st.session_state.modo_admin:
                 if not df_hist.empty: df_hist.to_excel(writer, sheet_name='Movimientos', index=False)
             st.download_button("📥 Descargar Excel de Diagnósticos", data=buffer.getvalue(), file_name=f"Reporte_FCM_{obtener_fecha_archivo()}.xlsx")
             
-            # Acá mostramos el dataframe CRUDO Y COMPLETO sin ocultar columnas
+            # --- IMPRESIÓN DE LA TABLA EN CRUDO SIN RECORTES ---
             st.dataframe(df_filtrado.style.apply(aplicar_cebra, axis=1), use_container_width=True)
             
             if not df_hist.empty:
@@ -304,22 +320,10 @@ if st.session_state.modo_admin:
                 st.info("ℹ️ Columna de Fecha no detectada aún en las respuestas.")
 
     else:
-        st.warning("Aún no hay respuestas guardadas en el sistema para procesar. Apretá 'Enviar Prueba' para generar una.")
+        st.warning("Aún no hay respuestas guardadas en el sistema para procesar.")
 
 else:
-    # --- MOTOR DE AUTO-SCROLL DE PÁGINA REFORZADO ---
-    components.html("""
-        <script>
-            var parent = window.parent;
-            if(parent) {
-                parent.scrollTo(0, 0);
-                var main = parent.document.querySelector('.main');
-                if(main) { main.scrollTo(0, 0); }
-            }
-        </script>
-    """, height=0)
-
-    # --- MODO ALUMNO ---
+    # --- MODO ALUMNO (ENCUESTA TOTALMENTE CERRADA) ---
     st.markdown("""
         <div class="header-container">
             <div class="main-logo">🏥💉</div>
