@@ -90,8 +90,6 @@ def aplicar_cebra(row):
 
 # --- MEMORIA DE SESIÓN ---
 if 'seccion' not in st.session_state: st.session_state.seccion = 1
-if 'seccion_anterior' not in st.session_state: st.session_state.seccion_anterior = 1
-if 'respuesta_guardada' not in st.session_state: st.session_state.respuesta_guardada = False
 if 'respuestas' not in st.session_state: st.session_state.respuestas = {}
 if 'es_argentino' not in st.session_state: st.session_state.es_argentino = True
 
@@ -115,7 +113,7 @@ if st.session_state.modo_admin:
             if os.path.exists('Historial_Movimientos.csv'): os.remove('Historial_Movimientos.csv')
             st.success("✅ Archivos locales borrados.")
     with col_btn4:
-        if st.button("🧪 Enviar Prueba (Test)", use_container_width=True):
+        if st.button("🧪 Enviar Prueba", use_container_width=True):
             datos_prueba = {
                 "Fecha": obtener_hora_arg(),
                 "Email": "ALUMNO.PRUEBA@TEST.COM",
@@ -148,11 +146,10 @@ if st.session_state.modo_admin:
                 "Conocia_Obligatorias_Arg": "No aplica",
                 "Facultad_Solicito_Doc": "No aplica",
                 "Desea_Mas_Info": "Sí",
-                "Vacunas_Faltantes": "Antitetánica, Antigripal"
+                "Vacunas_Faltantes": "Doble adulto (Antitetánica), Antigripal"
             }
             guardar_respuesta_doble(datos_prueba)
-            st.success("✅ ¡Datos de prueba enviados con éxito!")
-            st.rerun()
+            st.success("✅ ¡Prueba enviada! Apretá 'Actualizar Datos' para verla.")
             
     st.write("---")
     
@@ -248,6 +245,7 @@ if st.session_state.modo_admin:
                 if not df_hist.empty: df_hist.to_excel(writer, sheet_name='Movimientos', index=False)
             st.download_button("📥 Descargar Excel de Diagnósticos", data=buffer.getvalue(), file_name=f"Reporte_FCM_{obtener_fecha_archivo()}.xlsx")
             
+            # Acá mostramos el dataframe CRUDO Y COMPLETO sin ocultar columnas
             st.dataframe(df_filtrado.style.apply(aplicar_cebra, axis=1), use_container_width=True)
             
             if not df_hist.empty:
@@ -306,25 +304,22 @@ if st.session_state.modo_admin:
                 st.info("ℹ️ Columna de Fecha no detectada aún en las respuestas.")
 
     else:
-        st.warning("Aún no hay respuestas guardadas en el sistema para procesar.")
+        st.warning("Aún no hay respuestas guardadas en el sistema para procesar. Apretá 'Enviar Prueba' para generar una.")
 
 else:
-    # --- AUTO-SCROLL ENÉRGICO A LA CIMA ---
-    if st.session_state.seccion != st.session_state.seccion_anterior:
-        st.session_state.seccion_anterior = st.session_state.seccion
-        components.html("""
-            <script>
-                const parent = window.parent;
-                if (parent) {
-                    parent.scrollTo(0, 0);
-                    const main = parent.document.querySelector('.main');
-                    if (main) main.scrollTo(0, 0);
-                    const stApp = parent.document.querySelector('.stApp');
-                    if (stApp) stApp.scrollTo(0, 0);
-                }
-            </script>
-        """, height=0)
+    # --- MOTOR DE AUTO-SCROLL DE PÁGINA REFORZADO ---
+    components.html("""
+        <script>
+            var parent = window.parent;
+            if(parent) {
+                parent.scrollTo(0, 0);
+                var main = parent.document.querySelector('.main');
+                if(main) { main.scrollTo(0, 0); }
+            }
+        </script>
+    """, height=0)
 
+    # --- MODO ALUMNO ---
     st.markdown("""
         <div class="header-container">
             <div class="main-logo">🏥💉</div>
