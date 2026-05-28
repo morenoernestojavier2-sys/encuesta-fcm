@@ -121,7 +121,7 @@ if st.session_state.modo_admin:
                 "Email": "ALUMNO.PRUEBA@TEST.COM",
                 "Edad": "26 a 35 años",
                 "Sexo": "Femenino",
-                "Nacionalidad": "ARGENTINA",
+                "Nacionalidad": "Argentina",
                 "Carrera": "Medicina",
                 "Anio": "1er año",
                 "Conoce_Calendario": "Si",
@@ -151,7 +151,8 @@ if st.session_state.modo_admin:
                 "Vacunas_Faltantes": "Antitetánica, Antigripal"
             }
             guardar_respuesta_doble(datos_prueba)
-            st.success("✅ ¡Datos enviados al Excel! Hacé clic en 'Actualizar Datos' para verlos.")
+            st.success("✅ ¡Datos de prueba enviados con éxito!")
+            st.rerun()
             
     st.write("---")
     
@@ -240,10 +241,6 @@ if st.session_state.modo_admin:
                 if "Email" in df.columns: condicion = condicion | df_filtrado["Email"].astype(str).str.upper().str.contains(filtro_buscar)
                 df_filtrado = df_filtrado[condicion]
 
-            columnas_prioridad = ["Fecha", "Email", "Carrera", "Esquema_Completo", "Vacunas_Faltantes"]
-            cols_ordenadas = [c for c in columnas_prioridad if c in df_filtrado.columns] + [c for c in df_filtrado.columns if c not in columnas_prioridad and c != "Nombre"]
-            df_filtrado = df_filtrado[cols_ordenadas]
-
             st.write("---")
             buffer = io.BytesIO()
             with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
@@ -312,18 +309,22 @@ if st.session_state.modo_admin:
         st.warning("Aún no hay respuestas guardadas en el sistema para procesar.")
 
 else:
-    # --- AUTO-SCROLL A LA CIMA AL CAMBIAR DE SECCIÓN ---
+    # --- AUTO-SCROLL ENÉRGICO A LA CIMA ---
     if st.session_state.seccion != st.session_state.seccion_anterior:
+        st.session_state.seccion_anterior = st.session_state.seccion
         components.html("""
             <script>
-                var appContainer = window.parent.document.querySelector('.stApp');
-                if (appContainer) { appContainer.scrollTo(0, 0); }
-                window.parent.scrollTo(0, 0);
+                const parent = window.parent;
+                if (parent) {
+                    parent.scrollTo(0, 0);
+                    const main = parent.document.querySelector('.main');
+                    if (main) main.scrollTo(0, 0);
+                    const stApp = parent.document.querySelector('.stApp');
+                    if (stApp) stApp.scrollTo(0, 0);
+                }
             </script>
         """, height=0)
-        st.session_state.seccion_anterior = st.session_state.seccion
 
-    # --- MODO ALUMNO ---
     st.markdown("""
         <div class="header-container">
             <div class="main-logo">🏥💉</div>
@@ -336,21 +337,16 @@ else:
         e = st.text_input("Correo Electrónico *").upper()
         edad = st.selectbox("Edad *", ["18 a 25 años", "26 a 35 años", "36 a 45 años", "46 a 55 años", "56 a 65 años"], index=None)
         sexo = st.radio("Sexo *", ["Femenino", "Masculino"], index=None)
-        nac = st.selectbox("Nacionalidad *", ["Argentina", "Colombia", "Venezuela", "Chile", "Perú", "Bolivia", "Ecuador", "Brasil", "Uruguay", "Paraguay", "Otros"], index=None)
-        
-        nac_final = nac
-        if nac == "Otros":
-            nac_final = st.text_input("Especificá tu nacionalidad *").upper()
-            
+        nac = st.selectbox("Nacionalidad *", ["Argentina", "Colombia", "Venezuela", "Chile", "Perú", "Bolivia", "Ecuador", "Brasil", "Uruguay", "Paraguay"], index=None)
         carrera = st.selectbox("Carrera *", ["Medicina", "Enfermería", "Fonoaudiología", "Kinesiología y fisiatría", "Nutrición", "Obstetricia", "Bioimágenes", "Podología", "Anestesia", "Cosmetología", "Hemoterapia", "Instrumentación quirúrgica", "Prácticas cardiológicas", "Radiología", "Docente", "No docente", "Visitante", "Odontología", "Posgrado"], index=None)
         anio = st.selectbox("Año que cursa *", ["1er año", "2do año", "3er año", "4to año", "5to año", "6to año", "Docente", "No docente", "Visitante", "Posgrado"], index=None)
 
         if st.button("Siguiente ➡️"):
-            if e.strip() == "" or None in [edad, sexo, nac, carrera, anio] or (nac == "Otros" and nac_final.strip() == ""):
+            if e.strip() == "" or None in [edad, sexo, nac, carrera, anio]:
                 st.error("⚠️ Completá todos los campos obligatorios antes de avanzar.")
             else:
                 st.session_state.es_argentino = (nac == "Argentina")
-                st.session_state.respuestas.update({"Email": e, "Edad": edad, "Sexo": sexo, "Nacionalidad": nac_final, "Carrera": carrera, "Anio": anio})
+                st.session_state.respuestas.update({"Email": e, "Edad": edad, "Sexo": sexo, "Nacionalidad": nac, "Carrera": carrera, "Anio": anio})
                 registrar_movimiento_doble("Sección 1", "Avanzó a Sección 2")
                 st.session_state.seccion = 2
                 st.rerun()
@@ -358,41 +354,12 @@ else:
     elif st.session_state.seccion == 2:
         st.header("SECCIÓN 2 - CONOCIMIENTOS SOBRE LA VACUNACIÓN EN ARGENTINA")
         cal = st.radio("¿Conoces el Calendario Nacional de Vacunación argentino? *", ["Si", "No", "Parcialmente"], index=None)
-        
-        medios = st.multiselect("¿Por qué medios recibes información sobre vacunación? *", ["Escuela", "Colegio", "Universidad", "Familia", "Redes sociales", "Campañas de salud (por ejemplo, centros de salud, propagandas, puntos saludables, etc)", "No recibí información", "Otros"])
-        medios_final = medios.copy()
-        otro_medio = ""
-        if "Otros" in medios:
-            otro_medio = st.text_input("Especificá por qué otro medio * :").upper()
-            if otro_medio:
-                medios_final.remove("Otros")
-                medios_final.append(otro_medio)
-
+        medios = st.multiselect("¿Por qué medios recibes información sobre vacunación? *", ["Escuela", "Colegio", "Universidad", "Familia", "Redes sociales", "Campañas de salud (por ejemplo, centros de salud, propagandas, puntos saludables, etc)", "No recibí información"])
         esquema = st.radio("¿Tienes el esquema de vacunación completo? *", ["Si", "No", "No sé"], index=None)
         libreta = st.radio("¿Tienes libreta, carnet o registro de vacunación? *", ["Sí, en formato físico", "Sí, en formato digital", "No", "No sé dónde está"], index=None)
-        vacs = st.multiselect("Selecciona las vacunas que te has colocado *", ["BCG", "Neumococo", "Hepatitis A", "Varicela", "HPV", "Hepatitis B", "Doble adulto (Antitetánica)", "Antigripal", "Otros"])
-        
-        vacs_final = vacs.copy()
-        otra_vacuna = ""
-        if "Otros" in vacs:
-            otra_vacuna = st.text_input("Especificá qué otra vacuna * :").upper()
-            if otra_vacuna:
-                vacs_final.remove("Otros")
-                vacs_final.append(otra_vacuna)
-
-        lugares = st.multiselect("¿En qué lugares te vacunas habitualmente? *", ["Hospitales Públicos", "Hospitales Privados", "Cesac", "Otros"])
-        lugares_final = lugares.copy()
-        otro_lugar = ""
-        if "Otros" in lugares:
-            otro_lugar = st.text_input("Especificá qué otro lugar * :").upper()
-            if otro_lugar:
-                lugares_final.remove("Otros")
-                lugares_final.append(otro_lugar)
-                
-        pago = st.radio("¿Tuviste que pagar alguna vacuna? *", ["Si", "No", "Otros"], index=None)
-        pago_final = pago
-        if pago == "Otros":
-            pago_final = st.text_input("Especificá qué vacuna o situación * :").upper()
+        vacs = st.multiselect("Selecciona las vacunas que te has colocado *", ["BCG", "Neumococo", "Hepatitis A", "Varicela", "HPV", "Hepatitis B", "Doble adulto (Antitetánica)", "Antigripal"])
+        lugares = st.multiselect("¿En qué lugares te vacunas habitualmente? *", ["Hospitales Públicos", "Hospitales Privados", "Cesac"])
+        pago = st.radio("¿Tuviste que pagar alguna vacuna? *", ["Si", "No"], index=None)
 
         col1, col2 = st.columns(2)
         with col1:
@@ -401,12 +368,12 @@ else:
                 st.rerun()
         with col2:
             if st.button("Siguiente ➡️"):
-                if None in [cal, esquema, libreta, pago] or not medios or not vacs or not lugares or ("Otros" in medios and not otro_medio) or ("Otros" in lugares and not otro_lugar) or (pago == "Otros" and not pago_final) or ("Otros" in vacs and not otra_vacuna):
+                if None in [cal, esquema, libreta, pago] or not medios or not vacs or not lugares:
                     st.error("⚠️ Completá todas las opciones obligatorias.")
                 else:
                     st.session_state.respuestas.update({
-                        "Conoce_Calendario": cal, "Medios_Info": ", ".join(medios_final), "Esquema_Completo": esquema, 
-                        "Libreta": libreta, "Vacunas": ", ".join(vacs_final), "Lugares_Vacunacion": ", ".join(lugares_final), "Pago_Vacuna": pago_final
+                        "Conoce_Calendario": cal, "Medios_Info": ", ".join(medios), "Esquema_Completo": esquema, 
+                        "Libreta": libreta, "Vacunas": ", ".join(vacs), "Lugares_Vacunacion": ", ".join(lugares), "Pago_Vacuna": pago
                     })
                     registrar_movimiento_doble("Sección 2", "Avanzó a Sección 3")
                     st.session_state.seccion = 3
@@ -418,12 +385,7 @@ else:
         info_facu = st.radio("¿Recibiste información por parte de la facultad sobre las vacunas requeridas? *", ["Si", "No", "No recuerdo"], index=None)
         ya_colocadas = st.radio("¿Ya te colocaste las vacunas obligatorias? *", ["Si", "No"], index=None)
         t_anti = st.radio("¿Hace cuánto tiempo te colocaste la vacuna Doble adulto (antitetánica)? *", ["Hace menos de 10 años", "Hace más de 10 años", "No recuerdo"], index=None)
-        
-        m_hepb = st.radio("¿En qué momento te colocaste la vacuna de la Hepatitis B? *", ["Según calendario de vacunación (3 dosis - 0, 1 y 6 meses de vida)", "De adulto", "Otros"], index=None)
-        m_hepb_final = m_hepb
-        if m_hepb == "Otros":
-            m_hepb_final = st.text_input("Especificá el momento de colocación * :").upper()
-            
+        m_hepb = st.radio("¿En qué momento te colocaste la vacuna de la Hepatitis B? *", ["Según calendario de vacunación (3 dosis - 0, 1 y 6 meses de vida)", "De adulto"], index=None)
         s_hepb = st.radio("¿Te hiciste la serología de la Hepatitis B? *", ["Si", "No"], index=None)
         antigripal = st.radio("¿Te colocaste la vacuna Antigripal este año? *", ["Si", "No"], index=None)
         anual = st.radio("¿Te vacunas todos los años contra la gripe? *", ["Si", "No", "Algunos"], index=None)
@@ -435,21 +397,17 @@ else:
                 st.rerun()
         with col2:
             if st.button("Siguiente ➡️"):
-                if None in [req, info_facu, ya_colocadas, t_anti, m_hepb, s_hepb, antigripal, anual] or (m_hepb == "Otros" and not m_hepb_final):
+                if None in [req, info_facu, ya_colocadas, t_anti, m_hepb, s_hepb, antigripal, anual]:
                     st.error("⚠️ Completá todas las preguntas obligatorias.")
                 else:
-                    st.session_state.respuestas.update({"Conoce_Requeridas": req, "Info_Facultad": info_facu, "Vacunas_Obligatorias_Colocadas": ya_colocadas, "Tiempo_Antitetanica": t_anti, "Momento_HepB": m_hepb_final, "Serologia_HepB": s_hepb, "Antigripal_Este_Anio": antigripal, "Gripe_Anual": anual})
+                    st.session_state.respuestas.update({"Conoce_Requeridas": req, "Info_Facultad": info_facu, "Vacunas_Obligatorias_Colocadas": ya_colocadas, "Tiempo_Antitetanica": t_anti, "Momento_HepB": m_hepb, "Serologia_HepB": s_hepb, "Antigripal_Este_Anio": antigripal, "Gripe_Anual": anual})
                     registrar_movimiento_doble("Sección 3", "Avanzó a Sección 4")
                     st.session_state.seccion = 4
                     st.rerun()
 
     elif st.session_state.seccion == 4:
         st.header("SECCIÓN 4 - CRITERIOS SOBRE LA VACUNACIÓN")
-        motivo = st.radio("¿Te vacunaste para poder cumplir con un requisito o por consideración propia? *", ["Obligación", "Consideración propia", "Otros"], index=None)
-        motivo_final = motivo
-        if motivo == "Otros":
-            motivo_final = st.text_input("Especificá cuál fue el motivo * :").upper()
-            
+        motivo = st.radio("¿Te vacunaste para poder cumplir con un requisito o por consideración propia? *", ["Obligación", "Consideración propia"], index=None)
         recom = st.radio("¿Recomendarías vacunarse a tus amigos y familiares? *", ["Si", "No"], index=None)
         st.write("¿Qué tan necesarias consideras las vacunas? (0 Innecesario - 10 Muy necesario) *")
         necesarias = st.select_slider("", options=list(range(11)), value=5)
@@ -464,10 +422,10 @@ else:
                 st.rerun()
         with col2:
             if st.button("Siguiente ➡️"):
-                if None in [motivo, recom, prev] or (motivo == "Otros" and not motivo_final):
+                if None in [motivo, recom, prev]:
                     st.error("⚠️ Completá todos los campos obligatorios.")
                 else:
-                    st.session_state.respuestas.update({"Motivo_Vacunacion": motivo_final, "Recomendaria": recom, "Nivel_Necesidad": necesarias, "Metodo_Preventivo": prev, "Nivel_Confianza": confianza})
+                    st.session_state.respuestas.update({"Motivo_Vacunacion": motivo, "Recomendaria": recom, "Nivel_Necesidad": necesarias, "Metodo_Preventivo": prev, "Nivel_Confianza": confianza})
                     if st.session_state.es_argentino:
                         registrar_movimiento_doble("Sección 4", "Avanzó a Sección 6 (Salteó la 5)")
                         st.session_state.seccion = 6
@@ -478,20 +436,9 @@ else:
 
     elif st.session_state.seccion == 5:
         st.header("SECCIÓN 5 - EXTRANJEROS / PERSONAS QUE HICIERON SU ESQUEMA FUERA DEL PAÍS")
-        carnet_ext = st.radio("¿Cuentas con un registro, libreta o carnet de vacunación de tu país de procedencia? *", ["Si", "No", "No lo sé", "Otros"], index=None)
-        carnet_ext_final = carnet_ext
-        if carnet_ext == "Otros":
-            carnet_ext_final = st.text_input("Especificá tu situación con el carnet * :").upper()
-            
-        conocia_arg = st.radio("Antes del ingreso al país, ¿conocías las vacunas obligatorias en Argentina? *", ["Si", "No", "Otros"], index=None)
-        conocia_arg_final = conocia_arg
-        if conocia_arg == "Otros":
-            conocia_arg_final = st.text_input("Especificá tu conocimiento * :").upper()
-            
-        facu_solicito = st.radio("¿La facultad te solicitó documentación sobre vacunación? *", ["Si", "No", "No recuerdo", "Otros"], index=None)
-        facu_solicito_final = facu_solicito
-        if facu_solicito == "Otros":
-            facu_solicito_final = st.text_input("Especificá qué te solicitó la facultad * :").upper()
+        carnet_ext = st.radio("¿Cuentas con un registro, libreta o carnet de vacunación de tu país de procedencia? *", ["Si", "No", "No lo sé"], index=None)
+        conocia_arg = st.radio("Antes del ingreso al país, ¿conocías las vacunas obligatorias en Argentina? *", ["Si", "No"], index=None)
+        facu_solicito = st.radio("¿La facultad te solicitó documentación sobre vacunación? *", ["Si", "No", "No recuerdo"], index=None)
 
         col1, col2 = st.columns(2)
         with col1:
@@ -500,10 +447,10 @@ else:
                 st.rerun()
         with col2:
             if st.button("Siguiente ➡️"):
-                if None in [carnet_ext, conocia_arg, facu_solicito] or (carnet_ext == "Otros" and not carnet_ext_final) or (conocia_arg == "Otros" and not conocia_arg_final) or (facu_solicito == "Otros" and not facu_solicito_final):
+                if None in [carnet_ext, conocia_arg, facu_solicito]:
                     st.error("⚠️ Completá todas las opciones obligatorias.")
                 else:
-                    st.session_state.respuestas.update({"Carnet_Exterior": carnet_ext_final, "Conocia_Obligatorias_Arg": conocia_arg_final, "Facultad_Solicito_Doc": facu_solicito_final})
+                    st.session_state.respuestas.update({"Carnet_Exterior": carnet_ext, "Conocia_Obligatorias_Arg": conocia_arg, "Facultad_Solicito_Doc": facu_solicito})
                     registrar_movimiento_doble("Sección 5", "Avanzó a Sección 6")
                     st.session_state.seccion = 6
                     st.rerun()
