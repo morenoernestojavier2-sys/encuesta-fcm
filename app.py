@@ -277,7 +277,7 @@ if st.session_state.modo_admin:
             else:
                 filtro_carrera = "TODAS"
                 
-            filtro_buscar = st.text_input("Buscar por Nombre o Email del Alumno:").upper()
+            filtro_buscar = st.text_input("Buscar por Email del Alumno:").upper()
             
             df_filtrado = df.copy()
             if col_carrera_opt and filtro_carrera != "TODAS":
@@ -366,7 +366,6 @@ else:
 
     if st.session_state.seccion == 1:
         st.header("SECCIÓN 1 - DATOS GENERALES")
-        n = st.text_input("Nombre y Apellido *").upper()
         e = st.text_input("Correo Electrónico *").upper()
         edad = st.selectbox("Edad *", ["18 a 25 años", "26 a 35 años", "36 a 45 años", "46 a 55 años", "56 a 65 años"], index=None)
         sexo = st.radio("Sexo *", ["Femenino", "Masculino"], index=None)
@@ -378,11 +377,11 @@ else:
         anio = st.selectbox("Año que cursa *", ["1er año", "2do año", "3er año", "4to año", "5to año", "6to año", "Docente", "No docente", "Visitante", "Posgrado"], index=None)
 
         if st.button("Siguiente ➡️"):
-            if n.strip() == "" or e.strip() == "" or None in [edad, sexo, nac, carrera, anio]:
+            if e.strip() == "" or None in [edad, sexo, nac, carrera, anio]:
                 st.error("⚠️ Completá todos los campos antes de avanzar.")
             else:
                 st.session_state.es_argentino = (nac == "Argentina")
-                st.session_state.respuestas.update({"Nombre": n, "Email": e, "Edad": edad, "Sexo": sexo, "Nacionalidad": nac_final, "Carrera": carrera, "Anio": anio})
+                st.session_state.respuestas.update({"Email": e, "Edad": edad, "Sexo": sexo, "Nacionalidad": nac_final, "Carrera": carrera, "Anio": anio})
                 registrar_movimiento_doble("Sección 1", "Avanzó a Sección 2")
                 st.session_state.seccion = 2
                 st.rerun()
@@ -547,7 +546,7 @@ else:
                 <h3 style='margin:0; color: white !important;'>🪪 CARNET DE VACUNACIÓN</h3>
             </div>
             <div class='carnet-body'>
-                <div class='fila-dato'><b>Titular:</b> {st.session_state.respuestas.get('Nombre', 'No especificado')}</div>
+                <div class='fila-dato'><b>Usuario:</b> {st.session_state.respuestas.get('Email', 'No especificado')}</div>
                 <div class='fila-dato'><b>Nacionalidad:</b> {st.session_state.respuestas.get('Nacionalidad', '')}</div>
                 <br>
                 <h4 style='margin-bottom: 5px; color: #2e7d32;'>✔️ Vacunas Declaradas:</h4>
