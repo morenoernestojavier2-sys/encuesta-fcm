@@ -20,7 +20,7 @@ def obtener_fecha_archivo():
 URL_DE_TU_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbyoYN3-nC8mhJWiNE14_tEcTjqPlh2q0R10Cy3ucE97DmtRmkLQfWlGcTT93EmWnfn7/exec"
 st.set_page_config(page_title="Encuesta de Vacunación", page_icon="🏥", layout="wide")
 
-# --- DISEÑO VISUAL PREMIUM ---
+# --- DISEÑO VISUAL ---
 st.markdown("""
 <style>
     .stApp {
@@ -39,112 +39,21 @@ st.markdown("""
         padding: 40px;
         max-width: 1100px;
     }
-    
-    .header-container {
-        text-align: center;
-        margin-bottom: 20px;
-        padding: 10px;
-        border-bottom: 2px solid #0056b3;
-    }
-    
-    .main-logo {
-        font-size: 70px;
-        margin-bottom: 0px;
-    }
-
-    h1 {
-        font-size: 34px !important;
-        color: #002e5d !important;
-        font-weight: 800 !important;
-        text-shadow: 1px 1px 2px #FFFFFF !important;
-        margin-top: 0px !important;
-    }
-    
-    h2 {
-        font-size: 24px !important;
-        color: #000000 !important;
-        font-weight: 700 !important;
-        text-shadow: 1px 1px 2px #FFFFFF !important;
-        margin-bottom: 15px !important;
-    }
-
-    .stTextInput label, .stSelectbox label, .stRadio label, .stMultiselect label, .stSlider label, h3, h4, .stMetric label {
-        color: #000000 !important; 
-        font-weight: 700 !important; 
-        text-shadow: 1px 1px 2px #FFFFFF !important; 
-    }
-    
-    .stTextInput input, .stSelectbox div[role="button"], .stRadio div[role="radiogroup"], .stMultiselect div[role="listbox"], .stSlider div[role="slider"] {
-        border: 3px solid #000000 !important; 
-        border-radius: 8px !important;
-        background-color: #FFFFFF !important; 
-        color: #000000 !important; 
-        opacity: 1.0 !important;
-        box-shadow: 4px 4px 10px rgba(0,0,0,0.8) !important; 
-    }
-
-    div.stButton > button:first-child, div.stDownloadButton > button:first-child {
-        background-color: #0056b3 !important;
-        color: #ffffff !important;
-        border-radius: 8px !important;
-        border: 3px solid #000000 !important; 
-        box-shadow: 5px 5px 15px rgba(0,0,0,0.8) !important; 
-        padding: 12px 24px !important;
-        font-weight: bold !important;
-        font-size: 18px !important;
-        width: 100% !important;
-        margin-top: 20px !important;
-    }
-    div.stButton > button:first-child:active, div.stDownloadButton > button:first-child:active {
-        transform: translateY(5px) !important;
-        box-shadow: 0px 0px 0px #003d82 !important;
-    }
-    
-    .carnet-oficial {
-        background-color: #FFFFFF !important; 
-        border-radius: 12px !important;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.3) !important;
-        border: 4px solid #000000 !important; 
-        overflow: hidden !important;
-        margin-bottom: 25px !important;
-        font-family: 'Arial', sans-serif !important;
-        opacity: 1.0 !important;
-    }
-    .carnet-header-verde {
-        background-color: #2e7d32 !important;
-        color: white !important;
-        padding: 15px !important;
-        text-align: center !important;
-        border-bottom: 4px solid #1b5e20 !important;
-    }
-    .carnet-header-rojo {
-        background-color: #d32f2f !important;
-        color: white !important;
-        padding: 15px !important;
-        text-align: center !important;
-        border-bottom: 4px solid #b71c1c !important;
-    }
-    .carnet-body {
-        padding: 20px !important;
-        color: #000000 !important; 
-    }
-    .fila-dato {
-        border-bottom: 2px solid #000000 !important; 
-        padding: 10px 0 !important;
-        font-size: 15px !important;
-    }
-    
+    .header-container { text-align: center; margin-bottom: 20px; padding: 10px; border-bottom: 2px solid #0056b3; }
+    .main-logo { font-size: 70px; margin-bottom: 0px; }
+    h1 { font-size: 34px !important; color: #002e5d !important; font-weight: 800 !important; text-shadow: 1px 1px 2px #FFFFFF !important; }
+    h2 { font-size: 24px !important; color: #000000 !important; font-weight: 700 !important; text-shadow: 1px 1px 2px #FFFFFF !important; margin-bottom: 15px !important; }
+    .stTextInput label, .stSelectbox label, .stRadio label, .stMultiselect label, .stSlider label, h3, h4, .stMetric label { color: #000000 !important; font-weight: 700 !important; text-shadow: 1px 1px 2px #FFFFFF !important; }
+    .stTextInput input, .stSelectbox div[role="button"], .stRadio div[role="radiogroup"], .stMultiselect div[role="listbox"], .stSlider div[role="slider"] { border: 3px solid #000000 !important; border-radius: 8px !important; background-color: #FFFFFF !important; color: #000000 !important; opacity: 1.0 !important; box-shadow: 4px 4px 10px rgba(0,0,0,0.8) !important; }
+    div.stButton > button:first-child, div.stDownloadButton > button:first-child { background-color: #0056b3 !important; color: #ffffff !important; border-radius: 8px !important; border: 3px solid #000000 !important; box-shadow: 5px 5px 15px rgba(0,0,0,0.8) !important; padding: 12px 24px !important; font-weight: bold !important; font-size: 18px !important; width: 100% !important; margin-top: 20px !important; }
+    div.stButton > button:first-child:active, div.stDownloadButton > button:first-child:active { transform: translateY(5px) !important; box-shadow: 0px 0px 0px #003d82 !important; }
+    .carnet-oficial { background-color: #FFFFFF !important; border-radius: 12px !important; box-shadow: 0 8px 16px rgba(0,0,0,0.3) !important; border: 4px solid #000000 !important; overflow: hidden !important; margin-bottom: 25px !important; font-family: 'Arial', sans-serif !important; opacity: 1.0 !important; }
+    .carnet-header-verde { background-color: #2e7d32 !important; color: white !important; padding: 15px !important; text-align: center !important; border-bottom: 4px solid #1b5e20 !important; }
+    .carnet-header-rojo { background-color: #d32f2f !important; color: white !important; padding: 15px !important; text-align: center !important; border-bottom: 4px solid #b71c1c !important; }
+    .carnet-body { padding: 20px !important; color: #000000 !important; }
+    .fila-dato { border-bottom: 2px solid #000000 !important; padding: 10px 0 !important; font-size: 15px !important; }
     .stTabs [data-baseweb="tab-list"] { gap: 20px; }
-    .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        background-color: #f0f2f6;
-        border-radius: 10px 10px 0px 0px;
-        padding: 10px 20px;
-        color: #000000;
-        font-weight: bold;
-        border: 2px solid #000000;
-        border-bottom: none;
-    }
+    .stTabs [data-baseweb="tab"] { height: 50px; background-color: #f0f2f6; border-radius: 10px 10px 0px 0px; padding: 10px 20px; color: #000000; font-weight: bold; border: 2px solid #000000; border-bottom: none; }
     .stTabs [aria-selected="true"] { background-color: #0056b3 !important; color: #ffffff !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -230,7 +139,9 @@ if st.session_state.modo_admin:
             
         if "Nivel_Confianza" in df.columns:
             s_conf = pd.to_numeric(df["Nivel_Confianza"], errors='coerce')
-            if s_conf.notna().any(): promedio_conf = f"{s_conf.mean():.1f} / 5"
+            if s_conf.notna().any():
+                num_conf = s_conf.mean()
+                promedio_conf = f"{num_conf:.1f} / 5"
             else: promedio_conf = "Sin datos"
         else: promedio_conf = "Sin datos"
 
@@ -271,7 +182,8 @@ if st.session_state.modo_admin:
             if "Carrera" in df.columns:
                 lista_carreras = ["TODAS"] + list(df["Carrera"].dropna().unique())
                 filtro_carrera = st.selectbox("Filtrar por Carrera:", lista_carreras)
-            else: filtro_carrera = "TODAS"
+            else:
+                filtro_carrera = "TODAS"
                 
             filtro_buscar = st.text_input("Buscar por Email del Alumno:").upper()
             
@@ -311,7 +223,7 @@ if st.session_state.modo_admin:
                     if not df_plot.empty and len(df_plot) > 0:
                         try:
                             if tipo == "torta":
-                                fig = px.pie(df_plot, names=nombre, values="Cantidad", title=titulo, hole=0.3, color_discrete_sequence=px.colors.colors.qualitative.Pastel)
+                                fig = px.pie(df_plot, names=nombre, values="Cantidad", title=titulo, hole=0.3, color_discrete_sequence=px.colors.qualitative.Pastel)
                                 fig.update_traces(textposition='inside', textinfo='percent+label')
                             else:
                                 fig = px.bar(df_plot, x=nombre, y="Cantidad", title=titulo, text_auto=True, color=nombre)
@@ -347,6 +259,7 @@ if st.session_state.modo_admin:
                     st.info("ℹ️ Esperando fechas de respuestas válidas para graficar el avance diario.")
             else:
                 st.info("ℹ️ Columna de Fecha no detectada aún en las respuestas.")
+
     else:
         st.warning("Aún no hay respuestas guardadas en el sistema para procesar.")
 
@@ -355,16 +268,14 @@ else:
     if st.session_state.seccion != st.session_state.seccion_anterior:
         components.html("""
             <script>
-                var appContainer = window.parent.document.querySelector('[data-testid="stAppViewContainer"]');
+                var appContainer = window.parent.document.querySelector('.stApp');
                 if (appContainer) { appContainer.scrollTo(0, 0); }
-                var main = window.parent.document.querySelector('.main');
-                if (main) { main.scrollTo(0, 0); }
                 window.parent.scrollTo(0, 0);
             </script>
         """, height=0)
         st.session_state.seccion_anterior = st.session_state.seccion
 
-    # --- MODO ALUMNO (ENCUESTA DEFINITIVA) ---
+    # --- MODO ALUMNO ---
     st.markdown("""
         <div class="header-container">
             <div class="main-logo">🏥💉</div>
@@ -377,18 +288,18 @@ else:
         e = st.text_input("Correo Electrónico *").upper()
         edad = st.selectbox("Edad *", ["18 a 25 años", "26 a 35 años", "36 a 45 años", "46 a 55 años", "56 a 65 años"], index=None)
         sexo = st.radio("Sexo *", ["Femenino", "Masculino"], index=None)
+        nac = st.selectbox("Nacionalidad *", ["Argentina", "Colombia", "Venezuela", "Chile", "Perú", "Bolivia", "Ecuador", "Brasil", "Uruguay", "Paraguay", "Otros"], index=None)
         
-        nac = st.selectbox("Nacionalidad *", ["Argentina", "Colombia", "Venezuela", "Chile", "Perú", "Bolivia", "Ecuador", "Brasil", "Uruguay", "Paraguay", "Otros:"], index=None)
         nac_final = nac
-        if nac == "Otros:":
+        if nac == "Otros":
             nac_final = st.text_input("Especificá tu nacionalidad *").upper()
             
         carrera = st.selectbox("Carrera *", ["Medicina", "Enfermería", "Fonoaudiología", "Kinesiología y fisiatría", "Nutrición", "Obstetricia", "Bioimágenes", "Podología", "Anestesia", "Cosmetología", "Hemoterapia", "Instrumentación quirúrgica", "Prácticas cardiológicas", "Radiología", "Docente", "No docente", "Visitante", "Odontología", "Posgrado"], index=None)
         anio = st.selectbox("Año que cursa *", ["1er año", "2do año", "3er año", "4to año", "5to año", "6to año", "Docente", "No docente", "Visitante", "Posgrado"], index=None)
 
         if st.button("Siguiente ➡️"):
-            if e.strip() == "" or None in [edad, sexo, nac, carrera, anio] or (nac == "Otros:" and nac_final.strip() == ""):
-                st.error("⚠️ Completá todos los campos antes de avanzar.")
+            if e.strip() == "" or None in [edad, sexo, nac, carrera, anio] or (nac == "Otros" and nac_final.strip() == ""):
+                st.error("⚠️ Completá todos los campos obligatorios antes de avanzar.")
             else:
                 st.session_state.es_argentino = (nac == "Argentina")
                 st.session_state.respuestas.update({"Email": e, "Edad": edad, "Sexo": sexo, "Nacionalidad": nac_final, "Carrera": carrera, "Anio": anio})
@@ -402,6 +313,7 @@ else:
         
         medios = st.multiselect("¿Por qué medios recibes información sobre vacunación? *", ["Escuela", "Colegio", "Universidad", "Familia", "Redes sociales", "Campañas de salud (por ejemplo, centros de salud, propagandas, puntos saludables, etc)", "No recibí información", "Otros"])
         medios_final = medios.copy()
+        otro_medio = ""
         if "Otros" in medios:
             otro_medio = st.text_input("Especificá por qué otro medio * :").upper()
             if otro_medio:
@@ -410,10 +322,19 @@ else:
 
         esquema = st.radio("¿Tienes el esquema de vacunación completo? *", ["Si", "No", "No sé"], index=None)
         libreta = st.radio("¿Tienes libreta, carnet o registro de vacunación? *", ["Sí, en formato físico", "Sí, en formato digital", "No", "No sé dónde está"], index=None)
-        vacs = st.multiselect("Selecciona las vacunas que te has colocado *", ["BCG", "Neumococo", "Hepatitis A", "Varicela", "HPV", "Hepatitis B", "Doble adulto (Antitetánica)", "Antigripal"])
+        vacs = st.multiselect("Selecciona las vacunas que te has colocado *", ["BCG", "Neumococo", "Hepatitis A", "Varicela", "HPV", "Hepatitis B", "Doble adulto (Antitetánica)", "Antigripal", "Otros"])
         
+        vacs_final = vacs.copy()
+        otra_vacuna = ""
+        if "Otros" in vacs:
+            otra_vacuna = st.text_input("Especificá qué otra vacuna * :").upper()
+            if otra_vacuna:
+                vacs_final.remove("Otros")
+                vacs_final.append(otra_vacuna)
+
         lugares = st.multiselect("¿En qué lugares te vacunas habitualmente? *", ["Hospitales Públicos", "Hospitales Privados", "Cesac", "Otros"])
         lugares_final = lugares.copy()
+        otro_lugar = ""
         if "Otros" in lugares:
             otro_lugar = st.text_input("Especificá qué otro lugar * :").upper()
             if otro_lugar:
@@ -432,12 +353,12 @@ else:
                 st.rerun()
         with col2:
             if st.button("Siguiente ➡️"):
-                if None in [cal, esquema, libreta, pago] or not medios or not vacs or not lugares or ("Otros" in medios and not otro_medio) or ("Otros" in lugares and not otro_lugar) or (pago == "Otros" and not pago_final):
+                if None in [cal, esquema, libreta, pago] or not medios or not vacs or not lugares or ("Otros" in medios and not otro_medio) or ("Otros" in lugares and not otro_lugar) or (pago == "Otros" and not pago_final) or ("Otros" in vacs and not otra_vacuna):
                     st.error("⚠️ Completá todas las opciones obligatorias.")
                 else:
                     st.session_state.respuestas.update({
                         "Conoce_Calendario": cal, "Medios_Info": ", ".join(medios_final), "Esquema_Completo": esquema, 
-                        "Libreta": libreta, "Vacunas": ", ".join(vacs), "Lugares_Vacunacion": ", ".join(lugares_final), "Pago_Vacuna": pago_final
+                        "Libreta": libreta, "Vacunas": ", ".join(vacs_final), "Lugares_Vacunacion": ", ".join(lugares_final), "Pago_Vacuna": pago_final
                     })
                     registrar_movimiento_doble("Sección 2", "Avanzó a Sección 3")
                     st.session_state.seccion = 3
@@ -457,7 +378,7 @@ else:
             
         s_hepb = st.radio("¿Te hiciste la serología de la Hepatitis B? *", ["Si", "No"], index=None)
         antigripal = st.radio("¿Te colocaste la vacuna Antigripal este año? *", ["Si", "No"], index=None)
-        anual = st.radio("¿Te vacunas todos los años contra la grive? *", ["Si", "No", "Algunos"], index=None)
+        anual = st.radio("¿Te vacunas todos los años contra la gripe? *", ["Si", "No", "Algunos"], index=None)
 
         col1, col2 = st.columns(2)
         with col1:
