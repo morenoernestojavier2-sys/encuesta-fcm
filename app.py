@@ -6,7 +6,6 @@ import os
 import io
 import requests
 import streamlit.components.v1 as components
-import time
 
 # --- CONFIGURACIÓN DE ZONA HORARIA (ARGENTINA UTC-3) ---
 TZ_ARG = timezone(timedelta(hours=-3))
@@ -21,28 +20,55 @@ def obtener_fecha_archivo():
 URL_DE_TU_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbyoYN3-nC8mhJWiNE14_tEcTjqPlh2q0R10Cy3ucE97DmtRmkLQfWlGcTT93EmWnfn7/exec"
 st.set_page_config(page_title="Encuesta de vacunación", page_icon="🏥", layout="wide")
 
-# --- 1. ESCUDO ANTI-ACTUALIZACIÓN (Carga una sola vez y no se borra) ---
-components.html("""
+# --- MEMORIA DE SESIÓN ---
+if 'seccion' not in st.session_state: st.session_state.seccion = 1
+if 'respuesta_guardada' not in st.session_state: st.session_state.respuesta_guardada = False
+if 'respuestas' not in st.session_state: st.session_state.respuestas = {}
+if 'es_argentino' not in st.session_state: st.session_state.es_argentino = True
+
+# --- PANEL DE CONTROL MAESTRO UNIFICADO (ALTA CONFIABILIDAD) ---
+# Ejecuta en paralelo el escudo anti-F5, bloquea el gesto de Android y fuerza la subida limpia
+components.html(f"""
     <script>
         var p = window.parent;
-        if(p && !p.window.escudoActivado) {
-            p.window.addEventListener("beforeunload", function (e) {
-                var msg = "Tienes respuestas sin guardar. ¿Seguro que quieres salir?";
-                e.preventDefault();
-                (e || p.window.event).returnValue = msg;
-                return msg;
-            });
-            p.window.escudoActivado = true;
+        if(p) {{
+            // 1. Escudo persistente contra cierres o recargas accidentales
+            if (!p.window.escudoVacunacionFCM) {{
+                p.window.addEventListener("beforeunload", function (e) {{
+                    var msg = "Tienes respuestas sin guardar. ¿Seguro que quieres salir?";
+                    (e || p.window.event).returnValue = msg;
+                    return msg;
+                }});
+                p.window.escudoVacunacionFCM = true;
+            }}
+
+            // 2. Ascensor de fuerza bruta activado por cambio de sección real
+            var seccionActual = "{st.session_state.seccion}";
+            if (p.window.ultimaSeccionRegistrada !== seccionActual) {{
+                p.window.ultimaSeccionRegistrada = seccionActual;
+                
+                function moverArriba() {{
+                    p.scrollTo(0, 0);
+                    var mainContent = p.document.querySelector('.main');
+                    if(mainContent) {{ mainContent.scrollTop = 0; }}
+                    var appContainer = p.document.querySelector('[data-testid="stAppViewContainer"]');
+                    if(appContainer) {{ appContainer.scrollTop = 0; }}
+                }}
+                
+                moverArriba();
+                setTimeout(moverArriba, 50);
+                setTimeout(moverArriba, 150);
+                setTimeout(moverArriba, 350);
+            }}
         }
     </script>
 """, height=0)
 
-# --- DISEÑO VISUAL Y BLOQUEO DE GESTO EN ANDROID ---
+# --- DISEÑO VISUAL ---
 st.markdown("""
 <style>
-    /* El overscroll-behavior-y desactiva el deslizar para recargar en Android */
     html, body, .stApp {
-        overscroll-behavior-y: none !important;
+        overscroll-behavior-y: none !important; /* Bloquea por completo el gesto de Android de tirar hacia abajo para recargar */
         background-image: url("https://img.freepik.com/free-vector/cartoon-coronavirus-vaccine-background_23-2148861308.jpg") !important;
         background-size: cover !important;
         background-repeat: no-repeat !important;
@@ -95,32 +121,6 @@ def cerrar_sesion():
 def aplicar_cebra(row):
     return ['background-color: #E6F2FF' if row.name % 2 == 0 else 'background-color: #FFFFFF' for _ in row]
 
-# --- MEMORIA DE SESIÓN ---
-if 'seccion' not in st.session_state: st.session_state.seccion = 1
-if 'seccion_anterior' not in st.session_state: st.session_state.seccion_anterior = 1
-if 'respuesta_guardada' not in st.session_state: st.session_state.respuesta_guardada = False
-if 'respuestas' not in st.session_state: st.session_state.respuestas = {}
-if 'es_argentino' not in st.session_state: st.session_state.es_argentino = True
-
-# --- 2. ASCENSOR DE FUERZA BRUTA (Solo se dispara al cambiar de sección) ---
-if st.session_state.seccion != st.session_state.seccion_anterior:
-    st.session_state.seccion_anterior = st.session_state.seccion
-    components.html(f"""
-        <script>
-            var p = window.parent;
-            if(p) {{
-                function subirPantalla() {{
-                    p.scrollTo(0, 0);
-                    var m = p.document.querySelector('.main');
-                    if(m) {{ m.scrollTop = 0; }}
-                }}
-                subirPantalla();
-                setTimeout(subirPantalla, 50);
-                setTimeout(subirPantalla, 250);
-            }}
-        </script>
-        """, height=0)
-
 # --- PANEL ADMIN ---
 st.sidebar.title("🔐 Panel de control")
 st.sidebar.text_input("Ingresá la clave de admin:", type="password", key="pwd_input")
@@ -138,7 +138,6 @@ if st.session_state.modo_admin:
     with col_btn3:
         if st.button("🗑️ Borrar pruebas", use_container_width=True):
             if os.path.exists('Base_Respuestas.csv'): os.remove('Base_Respuestas.csv')
-            if os.path.exists('Historial_Movimientos.csv'): os.remove('Historial_Movimientos.csv')
             st.success("✅ Sistema local limpio. ¡Recordá borrar la fila 1 de tu Google Drive!")
     with col_btn4:
         if st.button("🧪 Enviar prueba", use_container_width=True):
@@ -181,7 +180,6 @@ if st.session_state.modo_admin:
             st.rerun()
             
     st.write("---")
-    
     df = pd.DataFrame()
     
     try:
@@ -193,7 +191,6 @@ if st.session_state.modo_admin:
 
     if not df.empty:
         col_m1, col_m2, col_m3 = st.columns(3)
-        
         if "Esquema_Completo" in df.columns:
             s_esq = df["Esquema_Completo"].astype(str).str.lower()
             validos_esq = s_esq[s_esq != 'nan']
@@ -210,51 +207,32 @@ if st.session_state.modo_admin:
         else: promedio_conf = "Sin datos"
 
         with col_m1:
-            st.markdown(f"""
-            <div style="background: #FFFFFF; padding: 20px; border-radius: 12px; box-shadow: 4px 4px 12px rgba(0,0,0,0.3); border: 3px solid #000000; text-align: center;">
-                <span style="font-size: 35px;">📋</span>
-                <h4 style="margin: 5px 0; font-size: 15px; color: #000000; font-weight: 700;">TOTAL RESPUESTAS</h4>
-                <p style="margin: 0; font-size: 36px; font-weight: 800; color: #0056b3;">{len(df)}</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
+            st.markdown(f"""<div style="background: #FFFFFF; padding: 20px; border-radius: 12px; box-shadow: 4px 4px 12px rgba(0,0,0,0.3); border: 3px solid #000000; text-align: center;">
+                <span style="font-size: 35px;">📋</span><h4 style="margin: 5px 0; font-size: 15px; color: #000000; font-weight: 700;">TOTAL RESPUESTAS</h4><p style="margin: 0; font-size: 36px; font-weight: 800; color: #0056b3;">{len(df)}</p>
+            </div>""", unsafe_allow_html=True)
         with col_m2:
-            st.markdown(f"""
-            <div style="background: #FFFFFF; padding: 20px; border-radius: 12px; box-shadow: 4px 4px 12px rgba(0,0,0,0.3); border: 3px solid #000000; text-align: center;">
-                <span style="font-size: 35px;">💉</span>
-                <h4 style="margin: 5px 0; font-size: 15px; color: #000000; font-weight: 700;">ESQUEMA COMPLETO</h4>
-                <p style="margin: 0; font-size: 36px; font-weight: 800; color: #2e7d32;">{porcentaje_cob}</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
+            st.markdown(f"""<div style="background: #FFFFFF; padding: 20px; border-radius: 12px; box-shadow: 4px 4px 12px rgba(0,0,0,0.3); border: 3px solid #000000; text-align: center;">
+                <span style="font-size: 35px;">💉</span><h4 style="margin: 5px 0; font-size: 15px; color: #000000; font-weight: 700;">ESQUEMA COMPLETO</h4><p style="margin: 0; font-size: 36px; font-weight: 800; color: #2e7d32;">{porcentaje_cob}</p>
+            </div>""", unsafe_allow_html=True)
         with col_m3:
-            st.markdown(f"""
-            <div style="background: #FFFFFF; padding: 20px; border-radius: 12px; box-shadow: 4px 4px 12px rgba(0,0,0,0.3); border: 3px solid #000000; text-align: center;">
-                <span style="font-size: 35px;">🛡️</span>
-                <h4 style="margin: 5px 0; font-size: 15px; color: #000000; font-weight: 700;">CONFIANZA PROMEDIO</h4>
-                <p style="margin: 0; font-size: 36px; font-weight: 800; color: #d32f2f;">{promedio_conf}</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f"""<div style="background: #FFFFFF; padding: 20px; border-radius: 12px; box-shadow: 4px 4px 12px rgba(0,0,0,0.3); border: 3px solid #000000; text-align: center;">
+                <span style="font-size: 35px;">🛡️</span><h4 style="margin: 5px 0; font-size: 15px; color: #000000; font-weight: 700;">CONFIANZA PROMEDIO</h4><p style="margin: 0; font-size: 36px; font-weight: 800; color: #d32f2f;">{promedio_conf}</p>
+            </div>""", unsafe_allow_html=True)
 
         st.write("##")
-
         solapa_datos, solapa_graficos, solapa_diario = st.tabs(["📋 Tablas y Excel", "📊 Gráficos generales", "📈 Evolución por día"])
         
         with solapa_datos:
             st.write("### 🔍 Filtros de búsqueda rápida")
-            
             if "Carrera" in df.columns:
                 lista_carreras = ["Todas"] + list(df["Carrera"].dropna().unique())
                 filtro_carrera = st.selectbox("Filtrar por carrera:", lista_carreras)
-            else:
-                filtro_carrera = "Todas"
+            else: filtro_carrera = "Todas"
                 
             filtro_buscar = st.text_input("Buscar por correo del alumno:").lower()
-            
             df_filtrado = df.copy()
             if "Carrera" in df.columns and filtro_carrera != "Todas":
                 df_filtrado = df_filtrado[df_filtrado["Carrera"] == filtro_carrera]
-            
             if filtro_buscar:
                 condicion = pd.Series(False, index=df_filtrado.index)
                 if "Email" in df.columns: condicion = condicion | df_filtrado["Email"].astype(str).str.lower().str.contains(filtro_buscar)
@@ -265,12 +243,10 @@ if st.session_state.modo_admin:
             with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
                 df.to_excel(writer, sheet_name='Base_Completa', index=False)
             st.download_button("📥 Descargar Excel de diagnósticos", data=buffer.getvalue(), file_name=f"Reporte_FCM_{obtener_fecha_archivo()}.xlsx")
-            
             st.dataframe(df_filtrado.style.apply(aplicar_cebra, axis=1), use_container_width=True)
 
         with solapa_graficos:
             st.write("### 📊 Análisis visual demográfico y sanitario")
-            
             def crear_grafico(df_fuente, keyword, tipo, titulo):
                 cols = [c for c in df_fuente.columns if keyword.lower() in str(c).lower()]
                 if cols:
@@ -278,7 +254,6 @@ if st.session_state.modo_admin:
                     serie_limpia = df_fuente[nombre].astype(str).replace(['', 'nan', 'None', 'NaN', '<NA>'], 'Sin especificar')
                     df_plot = serie_limpia.value_counts().reset_index()
                     df_plot.columns = [nombre, "Cantidad"]
-                    
                     if not df_plot.empty and len(df_plot) > 0:
                         try:
                             if tipo == "torta":
@@ -294,7 +269,6 @@ if st.session_state.modo_admin:
             col_g1, col_g2 = st.columns(2)
             with col_g1: crear_grafico(df, "sex", "torta", "Participación por sexo")
             with col_g2: crear_grafico(df, "edad", "barra", "Distribución por edades")
-            
             col_g3, col_g4 = st.columns(2)
             with col_g3: crear_grafico(df, "esquema", "torta", "Estado de avance del esquema")
             with col_g4: crear_grafico(df, "carrera", "barra", "Afluencia por especialidad / carrera")
@@ -305,31 +279,22 @@ if st.session_state.modo_admin:
                 df_fecha = df.copy()
                 df_fecha["Fecha_DT"] = pd.to_datetime(df_fecha["Fecha"], errors='coerce')
                 df_fecha["Día"] = df_fecha["Fecha_DT"].dt.date
-                
                 df_diario = df_fecha.dropna(subset=["Fecha_DT"])["Día"].value_counts().reset_index()
                 df_diario.columns = ["Día", "Cantidad"]
                 df_diario = df_diario.sort_values(by="Día") 
-                
                 if not df_diario.empty:
                     fig_diario = px.line(df_diario, x="Día", y="Cantidad", title="Cantidad de encuestas recibidas por día", markers=True, text="Cantidad")
                     fig_diario.update_traces(textposition="top center", line=dict(color="#0056b3", width=4))
                     st.plotly_chart(fig_diario, use_container_width=True)
-                else:
-                    st.info("ℹ️ Esperando fechas de respuestas válidas para graficar el avance diario.")
-            else:
-                st.info("ℹ️ Columna de Fecha no detectada aún en las respuestas.")
-
-    else:
-        st.warning("Aún no hay respuestas guardadas en el sistema para procesar.")
+                else: st.info("ℹ️ Esperando fechas de respuestas válidas para graficar el avance diario.")
+            else: st.info("ℹ️ Columna de Fecha no detectada aún en las respuestas.")
+    else: st.warning("Aún no hay respuestas guardadas en el sistema para procesar.")
 
 else:
     # --- MODO ALUMNO ---
-    st.markdown("""
-        <div class="header-container">
-            <div class="main-logo">🏥💉</div>
-            <h1>Encuesta de vacunación</h1>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown("""<div class="header-container">
+            <div class="main-logo">🏥💉</div><h1>Encuesta de vacunación</h1>
+        </div>""", unsafe_allow_html=True)
 
     if st.session_state.seccion == 1:
         st.header("Sección 1 - Datos generales")
@@ -378,7 +343,7 @@ else:
         with col2:
             if st.button("Siguiente ➡️"):
                 if None in [cal, esquema, libreta, pago] or not medios or not vacs or not lugares or (pago == "Si" and (not detalle_pago or detalle_pago.strip() == "")):
-                    st.error("⚠️ Completá todas las opciones obligatorias.")
+                    st.error("⚠️ Completá todos los campos obligatorios antes de avanzar.")
                 else:
                     st.session_state.respuestas.update({
                         "Conoce_Calendario": cal, "Medios_Info": ", ".join(medios), "Esquema_Completo": esquema, 
@@ -433,10 +398,8 @@ else:
                     st.error("⚠️ Completá todos los campos obligatorios.")
                 else:
                     st.session_state.respuestas.update({"Motivo_Vacunacion": motivo, "Recomendaria": recom, "Nivel_Necesidad": necesarias, "Metodo_Preventivo": prev, "Nivel_Confianza": confianza})
-                    if st.session_state.es_argentino:
-                        st.session_state.seccion = 6
-                    else:
-                        st.session_state.seccion = 5
+                    if st.session_state.es_argentino: st.session_state.seccion = 6
+                    else: st.session_state.seccion = 5
                     st.rerun()
 
     elif st.session_state.seccion == 5:
@@ -471,8 +434,7 @@ else:
                 st.rerun()
         with col2:
             if st.button("Finalizar encuesta ✅"):
-                if mas_info is None:
-                    st.error("⚠️ Seleccioná una opción antes de finalizar.")
+                if mas_info is None: st.error("⚠️ Seleccioná una opción antes de finalizar.")
                 else:
                     st.session_state.respuestas.update({"Desea_Mas_Info": mas_info})
                     st.session_state.seccion = 7
@@ -481,7 +443,6 @@ else:
     elif st.session_state.seccion == 7:
         st.balloons()
         st.header("¡Gracias por completar la encuesta!")
-        
         lista_marcadas = st.session_state.respuestas.get("Vacunas", "")
         todas_las_vacunas = ["BCG", "Neumococo", "Hepatitis A", "Varicela", "HPV", "Hepatitis B", "Doble adulto (Antitetánica)", "Antigripal"]
         vacunas_faltantes = [v for v in todas_las_vacunas if v not in lista_marcadas]
@@ -493,58 +454,36 @@ else:
             guardar_respuesta_doble(datos_finales)
             st.session_state.respuesta_guardada = True
 
-        html_carnet_verde = f"""
-        <div class='carnet-oficial'>
-            <div class='carnet-header-verde'>
-                <h3 style='margin:0; color: white !important;'>🪪 CARNET DE VACUNACIÓN</h3>
-            </div>
+        html_carnet_verde = f"""<div class='carnet-oficial'>
+            <div class='carnet-header-verde'><h3 style='margin:0; color: white !important;'>🪪 CARNET DE VACUNACIÓN</h3></div>
             <div class='carnet-body'>
                 <div class='fila-dato'><b>Usuario:</b> {st.session_state.respuestas.get('Email', 'No especificado')}</div>
-                <div class='fila-dato'><b>Nacionalidad:</b> {st.session_state.respuestas.get('Nacionalidad', '')}</div>
-                <br>
-                <h4 style='margin-bottom: 5px; color: #2e7d32;'>✔️ Vacunas declaradas:</h4>
-                <p style='font-size: 16px; margin-top:0;'>{lista_marcadas if lista_marcadas else 'Ninguna'}</p>
+                <div class='fila-dato'><b>Nacionalidad:</b> {st.session_state.respuestas.get('Nacionalidad', '')}</div><br>
+                <h4 style='margin-bottom: 5px; color: #2e7d32;'>✔️ Vacunas declaradas:</h4><p style='font-size: 16px; margin-top:0;'>{lista_marcadas if lista_marcadas else 'Ninguna'}</p>
             </div>
-        </div>
-        """
+        </div>"""
         st.markdown(html_carnet_verde, unsafe_allow_html=True)
         
-        if len(vacunas_faltantes) == 0:
-            st.success("🎉 ¡Felicidades! Esquema obligatorio completo.")
+        if len(vacunas_faltantes) == 0: st.success("🎉 ¡Felicidades! Esquema obligatorio completo.")
         else:
-            html_carnet_rojo = f"""
-            <div class='carnet-oficial'>
-                <div class='carnet-header-rojo'>
-                    <h3 style='margin:0; color: white !important;'>🚨 AVISO DE FALTANTES</h3>
-                </div>
+            html_carnet_rojo = f"""<div class='carnet-oficial'>
+                <div class='carnet-header-rojo'><h3 style='margin:0; color: white !important;'>🚨 AVISO DE FALTANTES</h3></div>
                 <div class='carnet-body'>
                     <h4 style='margin-top: 0; color: #d32f2f;'>Se requiere la aplicación de:</h4>
                     <ul style='font-size: 16px; line-height: 1.6; margin-top: 10px;'>
-            """
-            for faltante in vacunas_faltantes:
-                html_carnet_rojo += f"<li>💉 <b>{faltante}</b></li>"
-            html_carnet_rojo += """
-                    </ul>
-                    <hr style='border: 1px solid #eee;'>
+                        {"".join(f"<li>💉 <b>{f}</b></li>" for f in vacunas_faltantes)}
+                    </ul><hr style='border: 1px solid #eee;'>
                     <p style='margin-bottom: 5px;'><b>📍 Podés acercarte a:</b></p>
                     <ul style='font-size: 14px; color: #444;'>
                         <li><b>Hospital de Clínicas:</b> Lun. a Vie. de 8:00 a 13:00 hs.</li>
                         <li><b>Cesac más cercano.</b></li>
                     </ul>
-                </div></div>
-            """
+                </div>
+            </div>"""
             st.markdown(html_carnet_rojo, unsafe_allow_html=True)
 
         st.write("---")
-        
-        # Elimina la alerta si el usuario decide hacer una nueva respuesta voluntariamente
-        components.html("""
-            <script>
-                var parent = window.parent;
-                if(parent) { parent.window.onbeforeunload = null; }
-            </script>
-        """, height=0)
-        
+        components.html("""<script>var parent = window.parent; if(parent) { parent.window.escudoVacunacionFCM = null; }</script>""", height=0)
         if st.button("Volver al inicio (Nueva respuesta)"):
             st.session_state.clear()
             st.rerun()
