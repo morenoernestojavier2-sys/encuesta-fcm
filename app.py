@@ -32,7 +32,7 @@ components.html(f"""
     <script>
         var p = window.parent;
         if(p) {{
-            // 1. Escudo persistente contra cierres o recargas accidentales (F5 / Deslizar Android)
+            // 1. Escudo persistente contra cierres o recargas accidentales
             if (!p.window.escudoVacunacionFCM) {{
                 p.window.addEventListener("beforeunload", function (e) {{
                     var msg = "Tienes respuestas sin guardar. ¿Seguro que quieres salir?";
@@ -64,7 +64,7 @@ components.html(f"""
     </script>
 """, height=0)
 
-# --- DISEÑO VISUAL ADAPTATIVO AUTOMÁTICO (LIGHT / DARK MODE) ---
+# --- DISEÑO VISUAL CON CONTRASTE DE LETRAS CLARO/OSCURO BLINDADO ---
 st.markdown("""
 <style>
     html, body, .stApp {
@@ -75,12 +75,11 @@ st.markdown("""
         background-attachment: fixed !important;
     }
 
-    /* --- ESTILO BASE PARA MODO CLARO --- */
+    /* --- EL FONDO SE QUEDA SIEMPRE CLARO COMO ESTABA --- */
     .block-container {
         background-color: rgba(255, 255, 255, 0.93) !important; 
         border-radius: 15px;
         box-shadow: 0px 8px 30px rgba(0,0,0,0.4); 
-        color: #000000 !important; 
         margin-top: 20px;
         margin-bottom: 20px;
         padding: 40px;
@@ -88,13 +87,14 @@ st.markdown("""
     }
     .header-container { text-align: center; margin-bottom: 20px; padding: 10px; border-bottom: 2px solid #0056b3; }
     .main-logo { font-size: 70px; margin-bottom: 0px; }
-    h1 { font-size: 34px !important; color: #002e5d !important; font-weight: 800 !important; text-shadow: 1px 1px 2px #FFFFFF !important; margin-top: 0px !important; }
-    h2 { font-size: 24px !important; color: #000000 !important; font-weight: 700 !important; text-shadow: 1px 1px 2px #FFFFFF !important; margin-bottom: 15px !important; }
     
-    .stTextInput label, .stSelectbox label, .stRadio label, .stMultiselect label, .stSlider label, h3, h4, .stMetric label { 
+    /* --- CONFIGURACIÓN DE COLORES DE TEXTO BASE (MODO CLARO) --- */
+    h1 { font-size: 34px !important; color: #002e5d !important; font-weight: 800 !important; margin-top: 0px !important; }
+    h2 { font-size: 24px !important; color: #000000 !important; font-weight: 700 !important; margin-bottom: 15px !important; }
+    
+    .stTextInput label, .stSelectbox label, .stRadio label, .stMultiselect label, .stSlider label, h3, h4, .stMetric label, p, span { 
         color: #000000 !important; 
         font-weight: 700 !important; 
-        text-shadow: 1px 1px 2px #FFFFFF !important; 
     }
     .stTextInput input, .stSelectbox div[role="button"], .stRadio div[role="radiogroup"], .stMultiselect div[role="listbox"], .stSlider div[role="slider"] { 
         border: 3px solid #000000 !important; 
@@ -103,6 +103,31 @@ st.markdown("""
         color: #000000 !important; 
         opacity: 1.0 !important; 
         box-shadow: 4px 4px 10px rgba(0,0,0,0.15) !important;
+    }
+
+    /* --- PROTECCIÓN OBLIGATORIA SI EL USUARIO TIENE EL DISPOSITIVO EN MODO OSCURO --- */
+    @media (prefers-color-scheme: dark) {
+        .block-container {
+            background-color: rgba(255, 255, 255, 0.93) !important; /* Mantiene el fondo claro intacto */
+        }
+        /* Fuerza a que todas las letras del cuestionario sean negras y legibles sobre el fondo claro */
+        h2, h3, h4, p, span, label, .stTextInput label, .stSelectbox label, .stRadio label, .stMultiselect label, .stSlider label {
+            color: #000000 !important;
+        }
+        /* Texto dentro de los cuadros de selección y entrada manual */
+        .stTextInput input, .stSelectbox div[role="button"] {
+            color: #000000 !important;
+            background-color: #FFFFFF !important;
+            border: 3px solid #000000 !important;
+        }
+        /* Texto de los círculos de opciones (Radio Buttons) */
+        div[role="radiogroup"] label [data-testid="stMarkdownContainer"] p {
+            color: #000000 !important;
+        }
+        /* Texto de los elementos seleccionados en etiquetas múltiples */
+        div[data-baseweb="tag"] span {
+            color: #000000 !important;
+        }
     }
     
     div.stButton > button:first-child, div.stDownloadButton > button:first-child { 
@@ -128,33 +153,6 @@ st.markdown("""
     .stTabs [data-baseweb="tab-list"] { gap: 20px; }
     .stTabs [data-baseweb="tab"] { height: 50px; background-color: #f0f2f6; border-radius: 10px 10px 0px 0px; padding: 10px 20px; color: #000000; font-weight: bold; border: 2px solid #000000; border-bottom: none; }
     .stTabs [aria-selected="true"] { background-color: #0056b3 !important; color: #ffffff !important; }
-
-    /* --- DETECCIÓN Y ADAPTACIÓN AUTOMÁTICA PARA MODO OSCURO (DARK MODE) --- */
-    @media (prefers-color-scheme: dark) {
-        .block-container {
-            background-color: rgba(28, 28, 30, 0.94) !important; /* Fondo oscuro integrado */
-            color: #FFFFFF !important;
-            box-shadow: 0px 8px 30px rgba(0,0,0,0.8);
-        }
-        h1 { color: #64b5f6 !important; text-shadow: 1px 1px 2px #000000 !important; }
-        h2 { color: #FFFFFF !important; text-shadow: 1px 1px 2px #000000 !important; }
-        
-        .stTextInput label, .stSelectbox label, .stRadio label, .stMultiselect label, .stSlider label, h3, h4, .stMetric label { 
-            color: #FFFFFF !important; 
-            text-shadow: 1px 1px 2px #000000 !important; 
-        }
-        .stTextInput input, .stSelectbox div[role="button"], .stRadio div[role="radiogroup"], .stMultiselect div[role="listbox"], .stSlider div[role="slider"] { 
-            border: 3px solid #FFFFFF !important; 
-            background-color: #1A1A1A !important; 
-            color: #FFFFFF !important; 
-            box-shadow: 4px 4px 10px rgba(0,0,0,0.6) !important;
-        }
-        .carnet-oficial { background-color: #2C2C2E !important; border: 4px solid #FFFFFF !important; }
-        .carnet-body { color: #FFFFFF !important; }
-        .fila-dato { border-bottom: 2px solid #FFFFFF !important; }
-        .stTabs [data-baseweb="tab"] { background-color: #2C2C2E; color: #FFFFFF; border: 2px solid #FFFFFF; border-bottom: none; }
-        div.stButton > button:first-child, div.stDownloadButton > button:first-child { border: 3px solid #FFFFFF !important; }
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -416,7 +414,7 @@ else:
         m_hepb = st.radio("¿En qué momento te colocaste la vacuna de la Hepatitis B? *", ["Según calendario de vacunación (3 dosis - 0, 1 y 6 meses de vida)", "De adulto"], index=None)
         s_hepb = st.radio("¿Te hiciste la serología de la Hepatitis B? *", ["Si", "No"], index=None)
         antigripal = st.radio("¿Te colocaste la vacuna antigripal este año? *", ["Si", "No"], index=None)
-        anual = st.radio("¿Te vacunas todos los años contra la grive? *", ["Si", "No", "Algunos"], index=None)
+        anual = st.radio("¿Te vacunas todos los años contra la gripe? *", ["Si", "No", "Algunos"], index=None)
 
         col1, col2 = st.columns(2)
         with col1:
@@ -471,7 +469,7 @@ else:
         with col2:
             if st.button("Siguiente ➡️"):
                 if None in [carnet_ext, conocia_arg, facu_solicito]:
-                    st.error("⚠️ Completá todas las opciones obligatorias.")
+                    st.error("⚠️ Completá todos las opciones obligatorias.")
                 else:
                     st.session_state.respuestas.update({"Carnet_Exterior": carnet_ext, "Conocia_Obligatorias_Arg": conocia_arg, "Facultad_Solicito_Doc": facu_solicito})
                     st.session_state.seccion = 6
