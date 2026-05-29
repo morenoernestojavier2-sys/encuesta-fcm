@@ -21,7 +21,6 @@ URL_DE_TU_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbyoYN3-nC8mhJ
 st.set_page_config(page_title="Encuesta de Vacunación", page_icon="🏥", layout="wide")
 
 # --- MOTOR DE AUTO-SCROLL OBLIGATORIO ---
-# Esto fuerza a la página a subir arriba de todo en cada recarga
 components.html("""
     <script>
         var parent = window.parent;
@@ -144,7 +143,7 @@ if st.session_state.modo_admin:
                 "Libreta": "Sí, en formato digital",
                 "Vacunas": "Hepatitis B, BCG",
                 "Lugares_Vacunacion": "Hospitales Públicos",
-                "Pago_Vacuna": "No",
+                "Pago_Vacuna": "SI - MATRICULA PARTICULAR",
                 "Conoce_Requeridas": "Si",
                 "Info_Facultad": "Si",
                 "Vacunas_Obligatorias_Colocadas": "No",
@@ -166,6 +165,7 @@ if st.session_state.modo_admin:
             }
             guardar_respuesta_doble(datos_prueba)
             st.success("✅ ¡Datos enviados al Excel! Apretá 'Actualizar Datos' para verlos.")
+            st.rerun()
             
     st.write("---")
     
@@ -261,7 +261,6 @@ if st.session_state.modo_admin:
                 if not df_hist.empty: df_hist.to_excel(writer, sheet_name='Movimientos', index=False)
             st.download_button("📥 Descargar Excel de Diagnósticos", data=buffer.getvalue(), file_name=f"Reporte_FCM_{obtener_fecha_archivo()}.xlsx")
             
-            # --- IMPRESIÓN DE LA TABLA EN CRUDO SIN RECORTES ---
             st.dataframe(df_filtrado.style.apply(aplicar_cebra, axis=1), use_container_width=True)
             
             if not df_hist.empty:
@@ -323,7 +322,7 @@ if st.session_state.modo_admin:
         st.warning("Aún no hay respuestas guardadas en el sistema para procesar.")
 
 else:
-    # --- MODO ALUMNO (ENCUESTA TOTALMENTE CERRADA) ---
+    # --- MODO ALUMNO ---
     st.markdown("""
         <div class="header-container">
             <div class="main-logo">🏥💉</div>
@@ -336,16 +335,22 @@ else:
         e = st.text_input("Correo Electrónico *").upper()
         edad = st.selectbox("Edad *", ["18 a 25 años", "26 a 35 años", "36 a 45 años", "46 a 55 años", "56 a 65 años"], index=None)
         sexo = st.radio("Sexo *", ["Femenino", "Masculino"], index=None)
-        nac = st.selectbox("Nacionalidad *", ["Argentina", "Colombia", "Venezuela", "Chile", "Perú", "Bolivia", "Ecuador", "Brasil", "Uruguay", "Paraguay"], index=None)
+        
+        # --- MODIFICACIÓN 1: NACIONALIDAD CON "OTROS" MANUAL ---
+        nac = st.selectbox("Nacionalidad *", ["Argentina", "Colombia", "Venezuela", "Chile", "Perú", "Bolivia", "Ecuador", "Brasil", "Uruguay", "Paraguay", "Otros"], index=None)
+        nac_final = nac
+        if nac == "Otros":
+            nac_final = st.text_input("Especificá tu nacionalidad * :").upper()
+            
         carrera = st.selectbox("Carrera *", ["Medicina", "Enfermería", "Fonoaudiología", "Kinesiología y fisiatría", "Nutrición", "Obstetricia", "Bioimágenes", "Podología", "Anestesia", "Cosmetología", "Hemoterapia", "Instrumentación quirúrgica", "Prácticas cardiológicas", "Radiología", "Docente", "No docente", "Visitante", "Odontología", "Posgrado"], index=None)
         anio = st.selectbox("Año que cursa *", ["1er año", "2do año", "3er año", "4to año", "5to año", "6to año", "Docente", "No docente", "Visitante", "Posgrado"], index=None)
 
         if st.button("Siguiente ➡️"):
-            if e.strip() == "" or None in [edad, sexo, nac, carrera, anio]:
+            if e.strip() == "" or None in [edad, sexo, nac, carrera, anio] or (nac == "Otros" and nac_final.strip() == ""):
                 st.error("⚠️ Completá todos los campos obligatorios antes de avanzar.")
             else:
                 st.session_state.es_argentino = (nac == "Argentina")
-                st.session_state.respuestas.update({"Email": e, "Edad": edad, "Sexo": sexo, "Nacionalidad": nac, "Carrera": carrera, "Anio": anio})
+                st.session_state.respuestas.update({"Email": e, "Edad": edad, "Sexo": sexo, "Nacionalidad": nac_final, "Carrera": carrera, "Anio": anio})
                 registrar_movimiento_doble("Sección 1", "Avanzó a Sección 2")
                 st.session_state.seccion = 2
                 st.rerun()
@@ -358,7 +363,14 @@ else:
         libreta = st.radio("¿Tienes libreta, carnet o registro de vacunación? *", ["Sí, en formato físico", "Sí, en formato digital", "No", "No sé dónde está"], index=None)
         vacs = st.multiselect("Selecciona las vacunas que te has colocado *", ["BCG", "Neumococo", "Hepatitis A", "Varicela", "HPV", "Hepatitis B", "Doble adulto (Antitetánica)", "Antigripal"])
         lugares = st.multiselect("¿En qué lugares te vacunas habitualmente? *", ["Hospitales Públicos", "Hospitales Privados", "Cesac"])
+        
+        # --- MODIFICACIÓN 2: PREGUNTA DE PAGO CON CAMPO DE DETALLE MANUAL ---
         pago = st.radio("¿Tuviste que pagar alguna vacuna? *", ["Si", "No"], index=None)
+        pago_final = pago
+        detalle_pago = ""
+        if pago == "Si":
+            detalle_pago = st.text_input("Especificá qué vacuna o situación de pago * :").upper()
+            pago_final = f"SI - {detalle_pago}"
 
         col1, col2 = st.columns(2)
         with col1:
@@ -367,12 +379,12 @@ else:
                 st.rerun()
         with col2:
             if st.button("Siguiente ➡️"):
-                if None in [cal, esquema, libreta, pago] or not medios or not vacs or not lugares:
+                if None in [cal, esquema, libreta, pago] or not medios or not vacs or not lugares or (pago == "Si" and detalle_pago.strip() == ""):
                     st.error("⚠️ Completá todas las opciones obligatorias.")
                 else:
                     st.session_state.respuestas.update({
                         "Conoce_Calendario": cal, "Medios_Info": ", ".join(medios), "Esquema_Completo": esquema, 
-                        "Libreta": libreta, "Vacunas": ", ".join(vacs), "Lugares_Vacunacion": ", ".join(lugares), "Pago_Vacuna": pago
+                        "Libreta": libreta, "Vacunas": ", ".join(vacs), "Lugares_Vacunacion": ", ".join(lugares), "Pago_Vacuna": pago_final
                     })
                     registrar_movimiento_doble("Sección 2", "Avanzó a Sección 3")
                     st.session_state.seccion = 3
