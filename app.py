@@ -21,42 +21,28 @@ def obtener_fecha_archivo():
 URL_DE_TU_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbyoYN3-nC8mhJWiNE14_tEcTjqPlh2q0R10Cy3ucE97DmtRmkLQfWlGcTT93EmWnfn7/exec"
 st.set_page_config(page_title="Encuesta de vacunación", page_icon="🏥", layout="wide")
 
-# --- MOTOR DE AUTO-SCROLL IMPLACABLE Y ESCUDO ANTI-ACTUALIZACIÓN ---
-# Al inyectar time.time(), obligamos al navegador a ejecutar este código en cada recarga sin excepción.
-components.html(f"""
+# --- 1. ESCUDO ANTI-ACTUALIZACIÓN (Carga una sola vez y no se borra) ---
+components.html("""
     <script>
-        var parent = window.parent;
-        if(parent) {{
-            // 1. Escudo para evitar que F5 o deslizar hacia abajo borre los datos por accidente
-            if (!parent.window.antiRefreshAdded) {{
-                parent.window.addEventListener("beforeunload", function (e) {{
-                    var confirmationMessage = "Tienes respuestas sin guardar. ¿Seguro que quieres salir?";
-                    (e || parent.window.event).returnValue = confirmationMessage;
-                    return confirmationMessage;
-                }});
-                parent.window.antiRefreshAdded = true;
-            }}
-
-            // 2. Scroll de fuerza bruta hacia arriba
-            function forzarArriba() {{
-                parent.scrollTo(0, 0);
-                var main = parent.document.querySelector('.main');
-                if(main) {{ main.scrollTop = 0; }}
-            }}
-            
-            forzarArriba();
-            setTimeout(forzarArriba, 50);
-            setTimeout(forzarArriba, 200);
-            setTimeout(forzarArriba, 500);
-        }}
-        // Timestamp dinámico: {time.time()}
+        var p = window.parent;
+        if(p && !p.window.escudoActivado) {
+            p.window.addEventListener("beforeunload", function (e) {
+                var msg = "Tienes respuestas sin guardar. ¿Seguro que quieres salir?";
+                e.preventDefault();
+                (e || p.window.event).returnValue = msg;
+                return msg;
+            });
+            p.window.escudoActivado = true;
+        }
     </script>
 """, height=0)
 
-# --- DISEÑO VISUAL ---
+# --- DISEÑO VISUAL Y BLOQUEO DE GESTO EN ANDROID ---
 st.markdown("""
 <style>
-    .stApp {
+    /* El overscroll-behavior-y desactiva el deslizar para recargar en Android */
+    html, body, .stApp {
+        overscroll-behavior-y: none !important;
         background-image: url("https://img.freepik.com/free-vector/cartoon-coronavirus-vaccine-background_23-2148861308.jpg") !important;
         background-size: cover !important;
         background-repeat: no-repeat !important;
@@ -111,9 +97,29 @@ def aplicar_cebra(row):
 
 # --- MEMORIA DE SESIÓN ---
 if 'seccion' not in st.session_state: st.session_state.seccion = 1
+if 'seccion_anterior' not in st.session_state: st.session_state.seccion_anterior = 1
 if 'respuesta_guardada' not in st.session_state: st.session_state.respuesta_guardada = False
 if 'respuestas' not in st.session_state: st.session_state.respuestas = {}
 if 'es_argentino' not in st.session_state: st.session_state.es_argentino = True
+
+# --- 2. ASCENSOR DE FUERZA BRUTA (Solo se dispara al cambiar de sección) ---
+if st.session_state.seccion != st.session_state.seccion_anterior:
+    st.session_state.seccion_anterior = st.session_state.seccion
+    components.html(f"""
+        <script>
+            var p = window.parent;
+            if(p) {{
+                function subirPantalla() {{
+                    p.scrollTo(0, 0);
+                    var m = p.document.querySelector('.main');
+                    if(m) {{ m.scrollTop = 0; }}
+                }}
+                subirPantalla();
+                setTimeout(subirPantalla, 50);
+                setTimeout(subirPantalla, 250);
+            }}
+        </script>
+        """, height=0)
 
 # --- PANEL ADMIN ---
 st.sidebar.title("🔐 Panel de control")
@@ -531,6 +537,7 @@ else:
 
         st.write("---")
         
+        # Elimina la alerta si el usuario decide hacer una nueva respuesta voluntariamente
         components.html("""
             <script>
                 var parent = window.parent;
