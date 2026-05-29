@@ -6,6 +6,7 @@ import os
 import io
 import requests
 import streamlit.components.v1 as components
+import time
 
 # --- CONFIGURACIÓN DE ZONA HORARIA (ARGENTINA UTC-3) ---
 TZ_ARG = timezone(timedelta(hours=-3))
@@ -20,47 +21,35 @@ def obtener_fecha_archivo():
 URL_DE_TU_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbyoYN3-nC8mhJWiNE14_tEcTjqPlh2q0R10Cy3ucE97DmtRmkLQfWlGcTT93EmWnfn7/exec"
 st.set_page_config(page_title="Encuesta de vacunación", page_icon="🏥", layout="wide")
 
-# --- ANCLA INVISIBLE PARA FORZAR LA CIMA ---
-st.markdown("<div id='tope-encuesta'></div>", unsafe_allow_html=True)
-
-# --- MOTOR DE AUTO-SCROLL BRUTAL Y ESCUDO ANTI-ACTUALIZACIÓN ---
-components.html("""
+# --- MOTOR DE AUTO-SCROLL IMPLACABLE Y ESCUDO ANTI-ACTUALIZACIÓN ---
+# Al inyectar time.time(), obligamos al navegador a ejecutar este código en cada recarga sin excepción.
+components.html(f"""
     <script>
         var parent = window.parent;
-        if(parent) {
-            // 1. Escudo para evitar que F5 o deslizar hacia abajo borre los datos
-            if (!parent.window.antiRefreshAdded) {
-                parent.window.addEventListener("beforeunload", function (e) {
+        if(parent) {{
+            // 1. Escudo para evitar que F5 o deslizar hacia abajo borre los datos por accidente
+            if (!parent.window.antiRefreshAdded) {{
+                parent.window.addEventListener("beforeunload", function (e) {{
                     var confirmationMessage = "Tienes respuestas sin guardar. ¿Seguro que quieres salir?";
                     (e || parent.window.event).returnValue = confirmationMessage;
                     return confirmationMessage;
-                });
+                }});
                 parent.window.antiRefreshAdded = true;
-            }
+            }}
 
             // 2. Scroll de fuerza bruta hacia arriba
-            function forzarArriba() {
+            function forzarArriba() {{
                 parent.scrollTo(0, 0);
-                parent.document.documentElement.scrollTop = 0;
-                parent.document.body.scrollTop = 0;
-                
                 var main = parent.document.querySelector('.main');
-                if(main) { main.scrollTop = 0; }
-                
-                var viewContainer = parent.document.querySelector('[data-testid="stAppViewContainer"]');
-                if(viewContainer) { viewContainer.scrollTop = 0; }
-                
-                var tope = parent.document.getElementById('tope-encuesta');
-                if(tope) { tope.scrollIntoView(true); }
-            }
+                if(main) {{ main.scrollTop = 0; }}
+            }}
             
-            // Atacar el scroll en varios milisegundos para vencer a la memoria del navegador
             forzarArriba();
             setTimeout(forzarArriba, 50);
-            setTimeout(forzarArriba, 150);
-            setTimeout(forzarArriba, 400);
-            setTimeout(forzarArriba, 800);
-        }
+            setTimeout(forzarArriba, 200);
+            setTimeout(forzarArriba, 500);
+        }}
+        // Timestamp dinámico: {time.time()}
     </script>
 """, height=0)
 
@@ -542,7 +531,6 @@ else:
 
         st.write("---")
         
-        # Elimina la alerta si el usuario decide hacer una nueva respuesta voluntariamente
         components.html("""
             <script>
                 var parent = window.parent;
