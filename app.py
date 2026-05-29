@@ -133,7 +133,7 @@ if st.session_state.modo_admin:
                 "Email": "alumno.prueba@test.com",
                 "Edad": "26 a 35 años",
                 "Sexo": "Femenino",
-                "Nacionalidad": "Argentina",
+                "Nacionalidad": "Uruguay",
                 "Carrera": "Medicina",
                 "Anio": "1er año",
                 "Conoce_Calendario": "Si",
@@ -142,7 +142,7 @@ if st.session_state.modo_admin:
                 "Libreta": "Sí, en formato digital",
                 "Vacunas": "Hepatitis B, BCG",
                 "Lugares_Vacunacion": "Hospitales públicos",
-                "Pago_Vacuna": "No",
+                "Pago_Vacuna": "Si - Pagué en vacunatorio privado",
                 "Conoce_Requeridas": "Si",
                 "Info_Facultad": "Si",
                 "Vacunas_Obligatorias_Colocadas": "No",
@@ -322,16 +322,22 @@ else:
         e = st.text_input("Correo electrónico *")
         edad = st.selectbox("Edad *", ["18 a 25 años", "26 a 35 años", "36 a 45 años", "46 a 55 años", "56 a 65 años"], index=None)
         sexo = st.radio("Sexo *", ["Femenino", "Masculino"], index=None)
-        nac = st.selectbox("Nacionalidad *", ["Argentina", "Colombia", "Venezuela", "Chile", "Perú", "Bolivia", "Ecuador", "Brasil", "Uruguay", "Paraguay"], index=None)
+        
+        # --- AQUÍ ESTÁ LA NACIONALIDAD CON "OTROS" Y CUADRO DE TEXTO ---
+        nac = st.selectbox("Nacionalidad *", ["Argentina", "Colombia", "Venezuela", "Chile", "Perú", "Bolivia", "Ecuador", "Brasil", "Uruguay", "Paraguay", "Otros"], index=None)
+        nac_final = nac
+        if nac == "Otros":
+            nac_final = st.text_input("Especificá tu país *")
+            
         carrera = st.selectbox("Carrera *", ["Medicina", "Enfermería", "Fonoaudiología", "Kinesiología y fisiatría", "Nutrición", "Obstetricia", "Bioimágenes", "Podología", "Anestesia", "Cosmetología", "Hemoterapia", "Instrumentación quirúrgica", "Prácticas cardiológicas", "Radiología", "Docente", "No docente", "Visitante", "Odontología", "Posgrado"], index=None)
         anio = st.selectbox("Año que cursa *", ["1er año", "2do año", "3er año", "4to año", "5to año", "6to año", "Docente", "No docente", "Visitante", "Posgrado"], index=None)
 
         if st.button("Siguiente ➡️"):
-            if e.strip() == "" or None in [edad, sexo, nac, carrera, anio]:
+            if e.strip() == "" or None in [edad, sexo, nac, carrera, anio] or (nac == "Otros" and (not nac_final or nac_final.strip() == "")):
                 st.error("⚠️ Completá todos los campos obligatorios antes de avanzar.")
             else:
-                st.session_state.es_argentino = (nac == "Argentina")
-                st.session_state.respuestas.update({"Email": e.lower().strip(), "Edad": edad, "Sexo": sexo, "Nacionalidad": nac, "Carrera": carrera, "Anio": anio})
+                st.session_state.es_argentino = (nac_final.strip().capitalize() == "Argentina")
+                st.session_state.respuestas.update({"Email": e.lower().strip(), "Edad": edad, "Sexo": sexo, "Nacionalidad": nac_final.capitalize(), "Carrera": carrera, "Anio": anio})
                 st.session_state.seccion = 2
                 st.rerun()
 
@@ -343,7 +349,14 @@ else:
         libreta = st.radio("¿Tienes libreta, carnet o registro de vacunación? *", ["Sí, en formato físico", "Sí, en formato digital", "No", "No sé dónde está"], index=None)
         vacs = st.multiselect("Selecciona las vacunas que te has colocado *", ["BCG", "Neumococo", "Hepatitis A", "Varicela", "HPV", "Hepatitis B", "Doble adulto (Antitetánica)", "Antigripal"])
         lugares = st.multiselect("¿En qué lugares te vacunas habitualmente? *", ["Hospitales públicos", "Hospitales privados", "Cesac"])
+        
+        # --- AQUÍ ESTÁ EL PAGO DE VACUNAS CON CUADRO DE TEXTO AL PONER "SI" ---
         pago = st.radio("¿Tuviste que pagar alguna vacuna? *", ["Si", "No"], index=None)
+        pago_final = pago
+        detalle_pago = ""
+        if pago == "Si":
+            detalle_pago = st.text_input("Especificá qué vacuna o situación de pago *")
+            pago_final = f"Si - {detalle_pago}"
 
         col1, col2 = st.columns(2)
         with col1:
@@ -352,12 +365,12 @@ else:
                 st.rerun()
         with col2:
             if st.button("Siguiente ➡️"):
-                if None in [cal, esquema, libreta, pago] or not medios or not vacs or not lugares:
+                if None in [cal, esquema, libreta, pago] or not medios or not vacs or not lugares or (pago == "Si" and (not detalle_pago or detalle_pago.strip() == "")):
                     st.error("⚠️ Completá todas las opciones obligatorias.")
                 else:
                     st.session_state.respuestas.update({
                         "Conoce_Calendario": cal, "Medios_Info": ", ".join(medios), "Esquema_Completo": esquema, 
-                        "Libreta": libreta, "Vacunas": ", ".join(vacs), "Lugares_Vacunacion": ", ".join(lugares), "Pago_Vacuna": pago
+                        "Libreta": libreta, "Vacunas": ", ".join(vacs), "Lugares_Vacunacion": ", ".join(lugares), "Pago_Vacuna": pago_final
                     })
                     st.session_state.seccion = 3
                     st.rerun()
