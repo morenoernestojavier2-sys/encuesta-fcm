@@ -20,12 +20,15 @@ def obtener_fecha_archivo():
 URL_DE_TU_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbyoYN3-nC8mhJWiNE14_tEcTjqPlh2q0R10Cy3ucE97DmtRmkLQfWlGcTT93EmWnfn7/exec"
 st.set_page_config(page_title="Encuesta de vacunación", page_icon="🏥", layout="wide")
 
-# --- MOTOR DE AUTO-SCROLL Y ESCUDO ANTI-ACTUALIZACIÓN ACCIDENTAL ---
+# --- ANCLA INVISIBLE PARA FORZAR LA CIMA ---
+st.markdown("<div id='tope-encuesta'></div>", unsafe_allow_html=True)
+
+# --- MOTOR DE AUTO-SCROLL BRUTAL Y ESCUDO ANTI-ACTUALIZACIÓN ---
 components.html("""
     <script>
         var parent = window.parent;
         if(parent) {
-            // 1. Escudo para evitar que F5 o deslizar hacia abajo borre los datos por accidente
+            // 1. Escudo para evitar que F5 o deslizar hacia abajo borre los datos
             if (!parent.window.antiRefreshAdded) {
                 parent.window.addEventListener("beforeunload", function (e) {
                     var confirmationMessage = "Tienes respuestas sin guardar. ¿Seguro que quieres salir?";
@@ -35,12 +38,28 @@ components.html("""
                 parent.window.antiRefreshAdded = true;
             }
 
-            // 2. Auto-scroll hacia arriba en cada recarga de sección
-            parent.scrollTo(0, 0);
-            var main = parent.document.querySelector('.main');
-            if(main) { main.scrollTo(0, 0); }
-            var app = parent.document.querySelector('.stApp');
-            if(app) { app.scrollTo(0, 0); }
+            // 2. Scroll de fuerza bruta hacia arriba
+            function forzarArriba() {
+                parent.scrollTo(0, 0);
+                parent.document.documentElement.scrollTop = 0;
+                parent.document.body.scrollTop = 0;
+                
+                var main = parent.document.querySelector('.main');
+                if(main) { main.scrollTop = 0; }
+                
+                var viewContainer = parent.document.querySelector('[data-testid="stAppViewContainer"]');
+                if(viewContainer) { viewContainer.scrollTop = 0; }
+                
+                var tope = parent.document.getElementById('tope-encuesta');
+                if(tope) { tope.scrollIntoView(true); }
+            }
+            
+            // Atacar el scroll en varios milisegundos para vencer a la memoria del navegador
+            forzarArriba();
+            setTimeout(forzarArriba, 50);
+            setTimeout(forzarArriba, 150);
+            setTimeout(forzarArriba, 400);
+            setTimeout(forzarArriba, 800);
         }
     </script>
 """, height=0)
@@ -323,7 +342,6 @@ else:
         edad = st.selectbox("Edad *", ["18 a 25 años", "26 a 35 años", "36 a 45 años", "46 a 55 años", "56 a 65 años"], index=None)
         sexo = st.radio("Sexo *", ["Femenino", "Masculino"], index=None)
         
-        # --- AQUÍ ESTÁ LA NACIONALIDAD CON "OTROS" Y CUADRO DE TEXTO ---
         nac = st.selectbox("Nacionalidad *", ["Argentina", "Colombia", "Venezuela", "Chile", "Perú", "Bolivia", "Ecuador", "Brasil", "Uruguay", "Paraguay", "Otros"], index=None)
         nac_final = nac
         if nac == "Otros":
@@ -350,7 +368,6 @@ else:
         vacs = st.multiselect("Selecciona las vacunas que te has colocado *", ["BCG", "Neumococo", "Hepatitis A", "Varicela", "HPV", "Hepatitis B", "Doble adulto (Antitetánica)", "Antigripal"])
         lugares = st.multiselect("¿En qué lugares te vacunas habitualmente? *", ["Hospitales públicos", "Hospitales privados", "Cesac"])
         
-        # --- AQUÍ ESTÁ EL PAGO DE VACUNAS CON CUADRO DE TEXTO AL PONER "SI" ---
         pago = st.radio("¿Tuviste que pagar alguna vacuna? *", ["Si", "No"], index=None)
         pago_final = pago
         detalle_pago = ""
