@@ -16,20 +16,26 @@ def obtener_hora_arg():
 def obtener_fecha_archivo():
     return datetime.now(TZ_ARG).strftime('%Y%m%d')
 
-def capitalizar_texto(texto):
-    if isinstance(texto, str) and texto:
-        return texto.capitalize()
-    return texto
-
 # --- CONFIGURACIÓN GENERAL ---
 URL_DE_TU_GOOGLE_SCRIPT = "https://script.google.com/macros/s/AKfycbyoYN3-nC8mhJWiNE14_tEcTjqPlh2q0R10Cy3ucE97DmtRmkLQfWlGcTT93EmWnfn7/exec"
 st.set_page_config(page_title="Encuesta de vacunación", page_icon="🏥", layout="wide")
 
-# --- MOTOR DE AUTO-SCROLL OBLIGATORIO ---
+# --- MOTOR DE AUTO-SCROLL Y ESCUDO ANTI-ACTUALIZACIÓN ACCIDENTAL ---
 components.html("""
     <script>
         var parent = window.parent;
         if(parent) {
+            // 1. Escudo para evitar que F5 o deslizar hacia abajo borre los datos por accidente
+            if (!parent.window.antiRefreshAdded) {
+                parent.window.addEventListener("beforeunload", function (e) {
+                    var confirmationMessage = "Tienes respuestas sin guardar. ¿Seguro que quieres salir?";
+                    (e || parent.window.event).returnValue = confirmationMessage;
+                    return confirmationMessage;
+                });
+                parent.window.antiRefreshAdded = true;
+            }
+
+            // 2. Auto-scroll hacia arriba en cada recarga de sección
             parent.scrollTo(0, 0);
             var main = parent.document.querySelector('.main');
             if(main) { main.scrollTo(0, 0); }
@@ -505,6 +511,15 @@ else:
             st.markdown(html_carnet_rojo, unsafe_allow_html=True)
 
         st.write("---")
+        
+        # Elimina la alerta si el usuario decide hacer una nueva respuesta voluntariamente
+        components.html("""
+            <script>
+                var parent = window.parent;
+                if(parent) { parent.window.onbeforeunload = null; }
+            </script>
+        """, height=0)
+        
         if st.button("Volver al inicio (Nueva respuesta)"):
             st.session_state.clear()
             st.rerun()
