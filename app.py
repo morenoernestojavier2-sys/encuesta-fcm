@@ -64,22 +64,24 @@ components.html(f"""
     </script>
 """, height=0)
 
-# --- DISEÑO VISUAL CON CONTRASTE DE LETRAS CLARO/OSCURO BLINDADO ---
+# --- DISEÑO VISUAL INTELIGENTE (ADAPTABLE A LIGHT / DARK MODE) ---
 st.markdown("""
 <style>
+    /* Bloqueo del gesto de deslizar para recargar en celulares */
     html, body, .stApp {
-        overscroll-behavior-y: none !important; /* Bloquea el gesto de Android de deslizar para recargar */
+        overscroll-behavior-y: none !important; 
         background-image: url("https://img.freepik.com/free-vector/cartoon-coronavirus-vaccine-background_23-2148861308.jpg") !important;
         background-size: cover !important;
         background-repeat: no-repeat !important;
         background-attachment: fixed !important;
     }
 
-    /* --- EL FONDO SE QUEDA SIEMPRE CLARO COMO ESTABA --- */
+    /* --- MODO CLARO (Diseño Base) --- */
     .block-container {
-        background-color: rgba(255, 255, 255, 0.93) !important; 
+        background-color: rgba(255, 255, 255, 0.80) !important; /* Blanco semitransparente */
+        backdrop-filter: blur(5px) !important; /* Efecto vidrio para que se vea el fondo sin molestar */
         border-radius: 15px;
-        box-shadow: 0px 8px 30px rgba(0,0,0,0.4); 
+        box-shadow: 0px 8px 30px rgba(0,0,0,0.3); 
         margin-top: 20px;
         margin-bottom: 20px;
         padding: 40px;
@@ -88,63 +90,39 @@ st.markdown("""
     .header-container { text-align: center; margin-bottom: 20px; padding: 10px; border-bottom: 2px solid #0056b3; }
     .main-logo { font-size: 70px; margin-bottom: 0px; }
     
-    /* --- CONFIGURACIÓN DE COLORES DE TEXTO BASE (MODO CLARO) --- */
+    /* Configuración de Títulos */
     h1 { font-size: 34px !important; color: #002e5d !important; font-weight: 800 !important; margin-top: 0px !important; }
-    h2 { font-size: 24px !important; color: #000000 !important; font-weight: 700 !important; margin-bottom: 15px !important; }
+    h2 { font-size: 24px !important; font-weight: 700 !important; margin-bottom: 15px !important; }
     
-    .stTextInput label, .stSelectbox label, .stRadio label, .stMultiselect label, .stSlider label, h3, h4, .stMetric label, p, span { 
-        color: #000000 !important; 
-        font-weight: 700 !important; 
-    }
-    .stTextInput input, .stSelectbox div[role="button"], .stRadio div[role="radiogroup"], .stMultiselect div[role="listbox"], .stSlider div[role="slider"] { 
-        border: 3px solid #000000 !important; 
-        border-radius: 8px !important; 
-        background-color: #FFFFFF !important; 
-        color: #000000 !important; 
-        opacity: 1.0 !important; 
-        box-shadow: 4px 4px 10px rgba(0,0,0,0.15) !important;
-    }
-
-    /* --- PROTECCIÓN OBLIGATORIA SI EL USUARIO TIENE EL DISPOSITIVO EN MODO OSCURO --- */
-    @media (prefers-color-scheme: dark) {
-        .block-container {
-            background-color: rgba(255, 255, 255, 0.93) !important; /* Mantiene el fondo claro intacto */
-        }
-        /* Fuerza a que todas las letras del cuestionario sean negras y legibles sobre el fondo claro */
-        h2, h3, h4, p, span, label, .stTextInput label, .stSelectbox label, .stRadio label, .stMultiselect label, .stSlider label {
-            color: #000000 !important;
-        }
-        /* Texto dentro de los cuadros de selección y entrada manual */
-        .stTextInput input, .stSelectbox div[role="button"] {
-            color: #000000 !important;
-            background-color: #FFFFFF !important;
-            border: 3px solid #000000 !important;
-        }
-        /* Texto de los círculos de opciones (Radio Buttons) */
-        div[role="radiogroup"] label [data-testid="stMarkdownContainer"] p {
-            color: #000000 !important;
-        }
-        /* Texto de los elementos seleccionados en etiquetas múltiples */
-        div[data-baseweb="tag"] span {
-            color: #000000 !important;
-        }
-    }
-    
+    /* Botones Siguiente/Atrás */
     div.stButton > button:first-child, div.stDownloadButton > button:first-child { 
         background-color: #0056b3 !important; 
         color: #ffffff !important; 
         border-radius: 8px !important; 
-        border: 3px solid #000000 !important; 
-        box-shadow: 5px 5px 15px rgba(0,0,0,0.3) !important; 
+        border: none !important;
+        box-shadow: 0px 4px 12px rgba(0,0,0,0.3) !important; 
         padding: 12px 24px !important; 
         font-weight: bold !important; 
         font-size: 18px !important; 
         width: 100% !important; 
         margin-top: 20px !important; 
     }
-    div.stButton > button:first-child:active, div.stDownloadButton > button:first-child:active { transform: translateY(5px) !important; box-shadow: 0px 0px 0px #003d82 !important; }
+    div.stButton > button:first-child:active, div.stDownloadButton > button:first-child:active { transform: translateY(5px) !important; box-shadow: none !important; }
 
-    .carnet-oficial { background-color: #FFFFFF !important; border-radius: 12px !important; box-shadow: 0 8px 16px rgba(0,0,0,0.15) !important; border: 4px solid #000000 !important; overflow: hidden !important; margin-bottom: 25px !important; font-family: 'Arial', sans-serif !important; }
+    /* --- MODO OSCURO (Auto-Detección) --- */
+    @media (prefers-color-scheme: dark) {
+        .block-container {
+            /* Si el teléfono está oscuro, la caja se vuelve oscura semitransparente */
+            background-color: rgba(20, 24, 30, 0.90) !important; 
+            box-shadow: 0px 8px 30px rgba(0,0,0,0.8);
+        }
+        h1 { color: #64b5f6 !important; }
+        .header-container { border-bottom: 2px solid #64b5f6; }
+        /* No forzamos colores de letras; Streamlit automáticamente las volverá BLANCAS sobre este fondo */
+    }
+
+    /* Carnet de Resultados Finales */
+    .carnet-oficial { background-color: #FFFFFF !important; color: #000000 !important; border-radius: 12px !important; box-shadow: 0 8px 16px rgba(0,0,0,0.2) !important; border: 4px solid #000000 !important; overflow: hidden !important; margin-bottom: 25px !important; font-family: 'Arial', sans-serif !important; }
     .carnet-header-verde { background-color: #2e7d32 !important; color: white !important; padding: 15px !important; text-align: center !important; border-bottom: 4px solid #1b5e20 !important; }
     .carnet-header-rojo { background-color: #d32f2f !important; color: white !important; padding: 15px !important; text-align: center !important; border-bottom: 4px solid #b71c1c !important; }
     .carnet-body { padding: 20px !important; color: #000000 !important; }
@@ -172,7 +150,7 @@ def cerrar_sesion():
     st.session_state.pwd_input = ""
 
 def aplicar_cebra(row):
-    return ['background-color: #E6F2FF' if row.name % 2 == 0 else 'background-color: #FFFFFF' for _ in row]
+    return ['background-color: #E6F2FF' if row.name % 2 == 0 else 'background-color: transparent' for _ in row]
 
 # --- PANEL ADMIN ---
 st.sidebar.title("🔐 Panel de control")
@@ -260,16 +238,16 @@ if st.session_state.modo_admin:
         else: promedio_conf = "Sin datos"
 
         with col_m1:
-            st.markdown(f"""<div style="background: #FFFFFF; padding: 20px; border-radius: 12px; box-shadow: 4px 4px 12px rgba(0,0,0,0.3); border: 3px solid #000000; text-align: center;">
-                <span style="font-size: 35px;">📋</span><h4 style="margin: 5px 0; font-size: 15px; color: #000000; font-weight: 700;">TOTAL RESPUESTAS</h4><p style="margin: 0; font-size: 36px; font-weight: 800; color: #0056b3;">{len(df)}</p>
+            st.markdown(f"""<div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 12px; border: 2px solid #0056b3; text-align: center;">
+                <span style="font-size: 35px;">📋</span><h4 style="margin: 5px 0; font-size: 15px; font-weight: 700;">TOTAL RESPUESTAS</h4><p style="margin: 0; font-size: 36px; font-weight: 800; color: #0056b3;">{len(df)}</p>
             </div>""", unsafe_allow_html=True)
         with col_m2:
-            st.markdown(f"""<div style="background: #FFFFFF; padding: 20px; border-radius: 12px; box-shadow: 4px 4px 12px rgba(0,0,0,0.3); border: 3px solid #000000; text-align: center;">
-                <span style="font-size: 35px;">💉</span><h4 style="margin: 5px 0; font-size: 15px; color: #000000; font-weight: 700;">ESQUEMA COMPLETO</h4><p style="margin: 0; font-size: 36px; font-weight: 800; color: #2e7d32;">{porcentaje_cob}</p>
+            st.markdown(f"""<div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 12px; border: 2px solid #2e7d32; text-align: center;">
+                <span style="font-size: 35px;">💉</span><h4 style="margin: 5px 0; font-size: 15px; font-weight: 700;">ESQUEMA COMPLETO</h4><p style="margin: 0; font-size: 36px; font-weight: 800; color: #2e7d32;">{porcentaje_cob}</p>
             </div>""", unsafe_allow_html=True)
         with col_m3:
-            st.markdown(f"""<div style="background: #FFFFFF; padding: 20px; border-radius: 12px; box-shadow: 4px 4px 12px rgba(0,0,0,0.3); border: 3px solid #000000; text-align: center;">
-                <span style="font-size: 35px;">🛡️</span><h4 style="margin: 5px 0; font-size: 15px; color: #000000; font-weight: 700;">CONFIANZA PROMEDIO</h4><p style="margin: 0; font-size: 36px; font-weight: 800; color: #d32f2f;">{promedio_conf}</p>
+            st.markdown(f"""<div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 12px; border: 2px solid #d32f2f; text-align: center;">
+                <span style="font-size: 35px;">🛡️</span><h4 style="margin: 5px 0; font-size: 15px; font-weight: 700;">CONFIANZA PROMEDIO</h4><p style="margin: 0; font-size: 36px; font-weight: 800; color: #d32f2f;">{promedio_conf}</p>
             </div>""", unsafe_allow_html=True)
 
         st.write("##")
@@ -424,7 +402,7 @@ else:
         with col2:
             if st.button("Siguiente ➡️"):
                 if None in [req, info_facu, ya_colocadas, t_anti, m_hepb, s_hepb, antigripal, anual]:
-                    st.error("⚠️ Completá todos los campos obligatorios antes de avanzar.")
+                    st.error("⚠️ Completá todas las preguntas obligatorias.")
                 else:
                     st.session_state.respuestas.update({"Conoce_Requeridas": req, "Info_Facultad": info_facu, "Vacunas_Obligatorias_Colocadas": ya_colocadas, "Tiempo_Antitetanica": t_anti, "Momento_HepB": m_hepb, "Serologia_HepB": s_hepb, "Antigripal_Este_Anio": antigripal, "Gripe_Anual": anual})
                     st.session_state.seccion = 4
@@ -469,7 +447,7 @@ else:
         with col2:
             if st.button("Siguiente ➡️"):
                 if None in [carnet_ext, conocia_arg, facu_solicito]:
-                    st.error("⚠️ Completá todos las opciones obligatorias.")
+                    st.error("⚠️ Completá todas las opciones obligatorias.")
                 else:
                     st.session_state.respuestas.update({"Carnet_Exterior": carnet_ext, "Conocia_Obligatorias_Arg": conocia_arg, "Facultad_Solicito_Doc": facu_solicito})
                     st.session_state.seccion = 6
