@@ -64,7 +64,7 @@ components.html(f"""
     </script>
 """, height=0)
 
-# --- DISEÑO VISUAL INTELIGENTE (ADAPTABLE A LIGHT / DARK MODE) ---
+# --- FUERZA BRUTA PARA MODO NORMAL (MATA EL MODO OSCURO DEL CELULAR) ---
 st.markdown("""
 <style>
     /* Bloqueo del gesto de deslizar para recargar en celulares */
@@ -74,63 +74,99 @@ st.markdown("""
         background-size: cover !important;
         background-repeat: no-repeat !important;
         background-attachment: fixed !important;
+        background-color: #f0f2f6 !important;
     }
 
-    /* --- MODO CLARO (Diseño Base) --- */
+    /* Caja principal flotante: Blanca y opaca */
     .block-container {
-        background-color: rgba(255, 255, 255, 0.80) !important; /* Blanco semitransparente */
-        backdrop-filter: blur(5px) !important; /* Efecto vidrio para que se vea el fondo sin molestar */
-        border-radius: 15px;
-        box-shadow: 0px 8px 30px rgba(0,0,0,0.3); 
-        margin-top: 20px;
-        margin-bottom: 20px;
-        padding: 40px;
-        max-width: 1100px;
+        background-color: rgba(255, 255, 255, 0.95) !important;
+        border-radius: 15px !important;
+        box-shadow: 0px 8px 30px rgba(0,0,0,0.5) !important; 
+        margin-top: 20px !important;
+        margin-bottom: 20px !important;
+        padding: 40px !important;
+        max-width: 1100px !important;
     }
+    
     .header-container { text-align: center; margin-bottom: 20px; padding: 10px; border-bottom: 2px solid #0056b3; }
     .main-logo { font-size: 70px; margin-bottom: 0px; }
     
-    /* Configuración de Títulos */
-    h1 { font-size: 34px !important; color: #002e5d !important; font-weight: 800 !important; margin-top: 0px !important; }
+    /* TODO EL TEXTO ES NEGRO OBLIGATORIAMENTE */
+    h1, h2, h3, h4, h5, h6, p, span, label, div[data-testid="stMarkdownContainer"] p {
+        color: #000000 !important;
+    }
+    h1 { font-size: 34px !important; font-weight: 800 !important; margin-top: 0px !important; color: #002e5d !important; }
     h2 { font-size: 24px !important; font-weight: 700 !important; margin-bottom: 15px !important; }
     
-    /* Botones Siguiente/Atrás */
+    /* TODOS LOS INPUTS SON BLANCOS CON TEXTO NEGRO */
+    .stTextInput input, 
+    .stSelectbox div[data-baseweb="select"], 
+    .stMultiSelect div[data-baseweb="select"],
+    div[data-baseweb="popover"] > div,
+    ul[data-baseweb="menu"],
+    .stRadio div[role="radiogroup"] {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border: 1px solid #000000 !important;
+        border-radius: 6px !important;
+    }
+
+    /* Opciones desplegables legibles */
+    li[role="option"] {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
+    li[role="option"]:hover {
+        background-color: #e0e0e0 !important;
+    }
+    li[role="option"] span {
+        color: #000000 !important;
+    }
+
+    /* Etiquetas del multiselect */
+    span[data-baseweb="tag"] {
+        background-color: #e0e0e0 !important;
+    }
+    span[data-baseweb="tag"] span {
+        color: #000000 !important;
+    }
+
+    /* Forzar Panel Lateral a ser Claro */
+    section[data-testid="stSidebar"] {
+        background-color: #F0F2F6 !important;
+    }
+    
+    /* Botones principales: Azules con texto blanco */
     div.stButton > button:first-child, div.stDownloadButton > button:first-child { 
         background-color: #0056b3 !important; 
-        color: #ffffff !important; 
+        border: 2px solid #003d82 !important;
         border-radius: 8px !important; 
-        border: none !important;
-        box-shadow: 0px 4px 12px rgba(0,0,0,0.3) !important; 
         padding: 12px 24px !important; 
-        font-weight: bold !important; 
-        font-size: 18px !important; 
         width: 100% !important; 
         margin-top: 20px !important; 
     }
-    div.stButton > button:first-child:active, div.stDownloadButton > button:first-child:active { transform: translateY(5px) !important; box-shadow: none !important; }
-
-    /* --- MODO OSCURO (Auto-Detección) --- */
-    @media (prefers-color-scheme: dark) {
-        .block-container {
-            /* Si el teléfono está oscuro, la caja se vuelve oscura semitransparente */
-            background-color: rgba(20, 24, 30, 0.90) !important; 
-            box-shadow: 0px 8px 30px rgba(0,0,0,0.8);
-        }
-        h1 { color: #64b5f6 !important; }
-        .header-container { border-bottom: 2px solid #64b5f6; }
-        /* No forzamos colores de letras; Streamlit automáticamente las volverá BLANCAS sobre este fondo */
+    div.stButton > button:first-child p, div.stDownloadButton > button:first-child p, 
+    div.stButton > button:first-child span, div.stDownloadButton > button:first-child span {
+        color: #ffffff !important; 
+        font-weight: bold !important; 
+        font-size: 18px !important; 
     }
 
-    /* Carnet de Resultados Finales */
-    .carnet-oficial { background-color: #FFFFFF !important; color: #000000 !important; border-radius: 12px !important; box-shadow: 0 8px 16px rgba(0,0,0,0.2) !important; border: 4px solid #000000 !important; overflow: hidden !important; margin-bottom: 25px !important; font-family: 'Arial', sans-serif !important; }
-    .carnet-header-verde { background-color: #2e7d32 !important; color: white !important; padding: 15px !important; text-align: center !important; border-bottom: 4px solid #1b5e20 !important; }
-    .carnet-header-rojo { background-color: #d32f2f !important; color: white !important; padding: 15px !important; text-align: center !important; border-bottom: 4px solid #b71c1c !important; }
-    .carnet-body { padding: 20px !important; color: #000000 !important; }
+    /* Carnet Final */
+    .carnet-oficial { background-color: #FFFFFF !important; border-radius: 12px !important; border: 4px solid #000000 !important; overflow: hidden !important; margin-bottom: 25px !important; }
+    .carnet-header-verde { background-color: #2e7d32 !important; padding: 15px !important; text-align: center !important; }
+    .carnet-header-verde * { color: white !important; }
+    .carnet-header-rojo { background-color: #d32f2f !important; padding: 15px !important; text-align: center !important; }
+    .carnet-header-rojo * { color: white !important; }
+    .carnet-body { padding: 20px !important; background-color: #FFFFFF !important; }
+    .carnet-body * { color: #000000 !important; }
     .fila-dato { border-bottom: 2px solid #000000 !important; padding: 10px 0 !important; font-size: 15px !important; }
     
+    /* Tabs del admin */
     .stTabs [data-baseweb="tab-list"] { gap: 20px; }
-    .stTabs [data-baseweb="tab"] { height: 50px; background-color: #f0f2f6; border-radius: 10px 10px 0px 0px; padding: 10px 20px; color: #000000; font-weight: bold; border: 2px solid #000000; border-bottom: none; }
-    .stTabs [aria-selected="true"] { background-color: #0056b3 !important; color: #ffffff !important; }
+    .stTabs [data-baseweb="tab"] { background-color: #e0e0e0 !important; border-radius: 10px 10px 0px 0px; padding: 10px 20px; border: 2px solid #000000; border-bottom: none; }
+    .stTabs [aria-selected="true"] { background-color: #0056b3 !important; }
+    .stTabs [aria-selected="true"] span { color: #ffffff !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -204,7 +240,7 @@ if st.session_state.modo_admin:
                 "Conocia_Obligatorias_Arg": "No aplica",
                 "Facultad_Solicito_Doc": "No aplica",
                 "Desea_Mas_Info": "Sí",
-                "Vacunas_Faltantes": "Doble adulto (Antitetánica), Antigripal"
+                "Vacunas_Faltantes": "Doble adulto (antitetánica), Antigripal"
             }
             guardar_respuesta_doble(datos_prueba)
             st.success("✅ ¡Datos enviados al Excel! Apretá 'Actualizar datos' para verlos.")
@@ -356,7 +392,7 @@ else:
         medios = st.multiselect("¿Por qué medios recibes información sobre vacunación? *", ["Escuela", "Colegio", "Universidad", "Familia", "Redes sociales", "Campañas de salud (por ejemplo, centros de salud, propagandas, puntos saludables, etc.)", "No recibí información"])
         esquema = st.radio("¿Tienes el esquema de vacunación completo? *", ["Si", "No", "No sé"], index=None)
         libreta = st.radio("¿Tienes libreta, carnet o registro de vacunación? *", ["Sí, en formato físico", "Sí, en formato digital", "No", "No sé dónde está"], index=None)
-        vacs = st.multiselect("Selecciona las vacunas que te has colocado *", ["BCG", "Neumococo", "Hepatitis A", "Varicela", "HPV", "Hepatitis B", "Doble adulto (Antitetánica)", "Antigripal"])
+        vacs = st.multiselect("Selecciona las vacunas que te has colocado *", ["BCG", "Neumococo", "Hepatitis A", "Varicela", "HPV", "Hepatitis B", "Doble adulto (antitetánica)", "Antigripal"])
         lugares = st.multiselect("¿En qué lugares te vacunas habitualmente? *", ["Hospitales públicos", "Hospitales privados", "Cesac"])
         
         pago = st.radio("¿Tuviste que pagar alguna vacuna? *", ["Si", "No"], index=None)
@@ -364,7 +400,7 @@ else:
         detalle_pago = ""
         if pago == "Si":
             detalle_pago = st.text_input("Especificá qué vacuna o situación de pago *")
-            pago_final = f"Si - {detalle_pago}"
+            pago_final = f"Si - {detalle_pago.strip().capitalize()}"
 
         col1, col2 = st.columns(2)
         with col1:
@@ -475,7 +511,7 @@ else:
         st.balloons()
         st.header("¡Gracias por completar la encuesta!")
         lista_marcadas = st.session_state.respuestas.get("Vacunas", "")
-        todas_las_vacunas = ["BCG", "Neumococo", "Hepatitis A", "Varicela", "HPV", "Hepatitis B", "Doble adulto (Antitetánica)", "Antigripal"]
+        todas_las_vacunas = ["BCG", "Neumococo", "Hepatitis A", "Varicela", "HPV", "Hepatitis B", "Doble adulto (antitetánica)", "Antigripal"]
         vacunas_faltantes = [v for v in todas_las_vacunas if v not in lista_marcadas]
         
         if not st.session_state.respuesta_guardada:
